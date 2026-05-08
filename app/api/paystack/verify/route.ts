@@ -34,14 +34,17 @@ export async function GET(request: NextRequest) {
     const result = await verifyPayment(reference)
 
     if (!result.status || result.data.status !== 'success') {
+      console.error('[Paystack Route] Verification failed:', result.message || 'Status not success')
       return NextResponse.json(
         {
           success: false,
-          error: 'Payment verification failed. Please contact support.',
+          error: 'Payment verification failed. Please contact support with reference: ' + reference,
         } satisfies ApiResponse,
         { status: 400 }
       )
     }
+
+    console.log('[Paystack Route] Payment verified successfully for reference:', reference)
 
     // Verify amount is ₦500 (50000 kobo)
     if (result.data.amount < 50000) {

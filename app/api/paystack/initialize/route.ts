@@ -45,6 +45,7 @@ export async function POST() {
     const result = await initializePayment(user.email!, user.id)
 
     if (!result.status) {
+      console.error('[Paystack Route] Initialization failed:', result.message)
       return NextResponse.json(
         {
           success: false,
@@ -53,6 +54,8 @@ export async function POST() {
         { status: 500 }
       )
     }
+
+    console.log('[Paystack Route] Successfully initialized:', result.data.reference)
 
     return NextResponse.json({
       success: true,
