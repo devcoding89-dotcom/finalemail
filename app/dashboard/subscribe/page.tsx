@@ -113,7 +113,7 @@ export default function SubscribePage() {
             <span className="text-white">Send</span>
           </div>
           <p className="text-white/50 text-sm">
-            Subscribe to unlock your outreach power
+            Your 2-day free trial has ended. Subscribe to continue.
           </p>
         </div>
 

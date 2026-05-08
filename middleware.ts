@@ -45,40 +45,45 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Redirect authenticated users away from auth pages (except verify-email)
+  // Redirect authenticated users away from auth pages
   if ((path === '/login' || path === '/signup') && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // PAYWALL: If logged in and on dashboard, check subscription
-  // Allow access to billing page and API routes without payment
+  // PAYWALL: Check subscription for dashboard routes
+  // Allow billing, subscribe pages, and API routes without payment
   if (
     user &&
     path.startsWith('/dashboard') &&
     !path.startsWith('/dashboard/settings/billing') &&
     !path.startsWith('/dashboard/subscribe')
   ) {
-    // Check if user has active premium plan
     const { data: profile } = await supabase
       .from('profiles')
-      .select('plan, plan_expires_at')
+      .select('plan, plan_expires_at, created_at')
       .eq('id', user.id)
       .single()
 
-    // If no profile yet (just signed up), redirect to subscribe
+    // No profile yet → redirect to subscribe
     if (!profile) {
       return NextResponse.redirect(
         new URL('/dashboard/subscribe', request.url)
       )
     }
 
-    // If not premium OR premium expired → redirect to subscribe page
+    // Check if premium and not expired
     const isPremium =
       profile.plan === 'premium' &&
       profile.plan_expires_at &&
       new Date(profile.plan_expires_at) > new Date()
 
-    if (!isPremium) {
+    // Check if within 2-day free trial
+    const createdAt = new Date(profile.created_at)
+    const twoDaysLater = new Date(createdAt.getTime() + 2 * 24 * 60 * 60 * 1000)
+    const isInFreeTrial = new Date() < twoDaysLater
+
+    // Allow access if premium OR in free trial
+    if (!isPremium && !isInFreeTrial) {
       return NextResponse.redirect(
         new URL('/dashboard/subscribe', request.url)
       )
