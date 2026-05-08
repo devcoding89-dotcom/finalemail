@@ -114,3 +114,52 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+// DELETE /api/campaigns?id=xxx — delete a campaign
+export async function DELETE(request: NextRequest) {
+  try {
+    const id = request.nextUrl.searchParams.get('id')
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Campaign ID is required' } satisfies ApiResponse,
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' } satisfies ApiResponse,
+        { status: 401 }
+      )
+    }
+
+    const { error } = await supabase
+      .from('campaigns')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
+
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: error.message } satisfies ApiResponse,
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: null,
+    } satisfies ApiResponse)
+  } catch (error) {
+    console.error('Campaign delete error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete campaign' } satisfies ApiResponse,
+      { status: 500 }
+    )
+  }
+}

@@ -30,6 +30,7 @@ import {
   FileText,
   ArrowRight,
   Send,
+  Trash2,
 } from 'lucide-react'
 import type { Campaign, EmailList, Template } from '@/types'
 import { CampaignStatusBadge } from '@/components/campaign-status-badge'
@@ -42,6 +43,7 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // Form
   const [campaignName, setCampaignName] = useState('')
@@ -110,12 +112,34 @@ export default function CampaignsPage() {
     }
   }
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this campaign?')) return
+
+    setDeletingId(id)
+    try {
+      const res = await fetch(`/api/campaigns?id=${id}`, {
+        method: 'DELETE',
+      })
+      const json = await res.json()
+
+      if (json.success) {
+        toast.success('Campaign deleted')
+        fetchData()
+      } else {
+        toast.error(json.error || 'Failed to delete')
+      }
+    } catch {
+      toast.error('Failed to delete campaign')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const resetForm = () => {
     setCampaignName('')
     setSelectedListId('')
     setSelectedTemplateId('')
   }
-
 
   return (
     <div className="space-y-8">
@@ -123,7 +147,7 @@ export default function CampaignsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Campaigns</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Create and manage your email outreach campaigns
           </p>
         </div>
@@ -140,7 +164,7 @@ export default function CampaignsPage() {
               id="new-campaign-btn"
             >
               <Plus className="mr-2 h-4 w-4" />
-              New Campaign
+              New <span className="hidden md:inline ml-1">Campaign</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
@@ -181,7 +205,7 @@ export default function CampaignsPage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                     {lists.map((list) => (
                       <div
                         key={list.id}
@@ -221,7 +245,7 @@ export default function CampaignsPage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                     {templates.map((tmpl) => (
                       <div
                         key={tmpl.id}
@@ -233,15 +257,15 @@ export default function CampaignsPage() {
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-sm font-medium">
+                          <div className="min-w-0 flex-1">
+                            <span className="text-sm font-medium truncate block">
                               {tmpl.name}
                             </span>
-                            <p className="text-xs text-muted-foreground truncate max-w-[300px]">
+                            <p className="text-xs text-muted-foreground truncate">
                               {tmpl.subject}
                             </p>
                           </div>
-                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                         </div>
                       </div>
                     ))}
@@ -258,7 +282,7 @@ export default function CampaignsPage() {
                   !selectedTemplateId ||
                   creating
                 }
-                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white"
+                className="w-full h-11 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold shadow-lg shadow-indigo-500/20"
                 id="create-campaign-btn"
               >
                 {creating ? (
@@ -316,45 +340,62 @@ export default function CampaignsPage() {
             return (
               <Card
                 key={campaign.id}
-                className="group hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300"
+                className="group hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 border-slate-200 dark:border-slate-800"
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
-                    <CardTitle className="text-base">
-                      {campaign.name}
-                    </CardTitle>
-                    <CampaignStatusBadge status={campaign.status} />
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-base truncate">
+                        {campaign.name}
+                      </CardTitle>
+                      <CardDescription className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                        {campaign.total_emails} contacts
+                      </CardDescription>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                       <CampaignStatusBadge status={campaign.status} />
+                       <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleDelete(campaign.id)}
+                          disabled={deletingId === campaign.id}
+                        >
+                          {deletingId === campaign.id ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                    </div>
                   </div>
-                  <CardDescription className="text-xs">
-                    {campaign.total_emails} contacts
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {/* Progress */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-muted-foreground">
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[10px] font-bold text-muted-foreground uppercase">
                         <span>
                           {campaign.sent_count} / {campaign.total_emails} sent
                         </span>
                         <span>{progress}%</span>
                       </div>
-                      <Progress value={progress} className="h-1.5" />
+                      <Progress value={progress} className="h-2 rounded-full" />
                     </div>
 
                     {/* Actions */}
                     <div className="flex items-center justify-between pt-1">
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[10px] text-muted-foreground font-medium">
                         {new Date(campaign.created_at).toLocaleDateString()}
                       </p>
                       <Link href={`/dashboard/campaigns/${campaign.id}/send`}>
                         <Button
                           size="sm"
-                          className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs"
+                          className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold rounded-lg px-4"
                         >
-                          <Send className="mr-1 h-3 w-3" />
+                          <Send className="mr-1.5 h-3 w-3" />
                           Send
-                          <ArrowRight className="ml-1 h-3 w-3" />
+                          <ArrowRight className="ml-1.5 h-3 w-3" />
                         </Button>
                       </Link>
                     </div>
