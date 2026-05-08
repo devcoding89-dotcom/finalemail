@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Crown, RefreshCw, User, CreditCard } from 'lucide-react'
+import { Crown, RefreshCw, User, CreditCard, Smartphone, Download } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
 import Link from 'next/link'
@@ -196,6 +196,37 @@ export default function SettingsPage() {
                 {isPremium ? 'Manage Plan' : 'Upgrade — ₦500/mo'}
               </Button>
             </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* App Install */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5" />
+            App Download
+          </CardTitle>
+          <CardDescription>Install EmailSend on your device for a faster experience</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="font-medium">Install as a Native App</p>
+              <p className="text-sm text-muted-foreground">
+                Get quick access from your home screen, better performance, and a seamless mobile experience.
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                alert("To install on Mobile: Tap the 'Share' icon (or browser menu) and select 'Add to Home Screen' 📱\n\nTo install on PC: Click the install icon (monitor with arrow) in your browser's address bar.")
+              }}
+              variant="outline"
+              className="shrink-0 gap-2 font-medium bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-950/20 dark:to-violet-950/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all duration-300 shadow-sm"
+            >
+              <Download className="h-4 w-4" />
+              Install App
+            </Button>
           </div>
         </CardContent>
       </Card>
