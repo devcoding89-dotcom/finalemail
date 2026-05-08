@@ -138,6 +138,16 @@ export async function DELETE(request: NextRequest) {
       .eq('user_id', user.id)
 
     if (error) {
+      // Check if it's a foreign key constraint error (code 23503)
+      if (error.code === '23503') {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'This template cannot be deleted because it is currently used in a campaign. Delete the campaign first.' 
+          } satisfies ApiResponse,
+          { status: 400 }
+        )
+      }
       return NextResponse.json(
         { success: false, error: error.message } satisfies ApiResponse,
         { status: 500 }
