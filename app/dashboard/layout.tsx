@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { DashboardNav, MobileNav } from '@/components/dashboard-nav'
+import { DashboardNav, BottomNav } from '@/components/dashboard-nav'
 import { UserNav } from '@/components/user-nav'
 import { VerificationBanner } from '@/components/verification-banner'
 import { FreeTrialBanner } from '@/components/free-trial-banner'
@@ -35,10 +35,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Top header */}
       <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg">
-        <div className="flex h-14 md:h-16 items-center px-3 md:px-8 gap-3">
-          {/* Mobile hamburger */}
-          <MobileNav />
-
+        <div className="flex h-14 md:h-16 items-center px-4 md:px-8 gap-3">
           {/* Logo */}
           <div className="flex items-center gap-1.5 font-bold text-lg md:text-xl">
             <span className="bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent">
@@ -66,7 +63,7 @@ export default async function DashboardLayout({
         </aside>
 
         {/* Main content — responsive padding */}
-        <main className="flex-1 p-3 md:p-8 min-w-0">
+        <main className="flex-1 p-3 md:p-8 pb-24 md:pb-8 min-w-0">
           <VerificationBanner
             emailVerified={emailVerified}
             userEmail={user.email || ''}
@@ -77,6 +74,10 @@ export default async function DashboardLayout({
           {children}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <BottomNav />
+      
       <Toaster position="top-center" richColors />
     </div>
   )
