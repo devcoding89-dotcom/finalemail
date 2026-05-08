@@ -84,6 +84,13 @@ export default function QuickSendPage() {
     setEmails((prev) =>
       prev.map((e) => (e.email === email ? { ...e, status: 'sent' } : e))
     )
+
+    // Log to DB
+    fetch('/api/logs/quick-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).catch(console.error)
   }
 
   // BATCH SEND LOGIC (Phone Friendly)
@@ -122,6 +129,13 @@ export default function QuickSendPage() {
     setEmails((prev) =>
       prev.map((e, i) => (i === index ? { ...e, status: 'sent' } : e))
     )
+
+    // Log to DB
+    fetch('/api/logs/quick-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: entry.email }),
+    }).catch(console.error)
 
     // Update progress
     const sentCount = emails.filter(e => e.status === 'sent').length + 1

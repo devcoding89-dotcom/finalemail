@@ -10,11 +10,14 @@ export function FreeTrialBanner({ createdAt }: { createdAt: string }) {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    const created = new Date(createdAt)
-    const expiry = new Date(created.getTime() + 2 * 24 * 60 * 60 * 1000)
+    if (!createdAt) return
 
     const update = () => {
+      const created = new Date(createdAt)
       const now = new Date()
+      
+      // 48 hours trial
+      const expiry = new Date(created.getTime() + 48 * 60 * 60 * 1000)
       const diff = expiry.getTime() - now.getTime()
 
       if (diff <= 0) {
@@ -22,20 +25,23 @@ export function FreeTrialBanner({ createdAt }: { createdAt: string }) {
         return
       }
 
-      const hours = Math.floor(diff / (1000 * 60 * 60))
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const totalMinutes = Math.floor(diff / (1000 * 60))
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
 
       if (hours >= 24) {
         const days = Math.floor(hours / 24)
-        const remainingHours = hours % 24
-        setTimeLeft(`${days}d ${remainingHours}h left`)
-      } else {
+        const remHours = hours % 24
+        setTimeLeft(`${days}d ${remHours}h left`)
+      } else if (hours > 0) {
         setTimeLeft(`${hours}h ${minutes}m left`)
+      } else {
+        setTimeLeft(`${minutes}m left`)
       }
     }
 
     update()
-    const interval = setInterval(update, 60000)
+    const interval = setInterval(update, 30000)
     return () => clearInterval(interval)
   }, [createdAt])
 
