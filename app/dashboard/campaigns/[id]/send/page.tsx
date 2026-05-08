@@ -382,55 +382,58 @@ export default function CampaignSendPage() {
               </p>
             </div>
           ) : (
-            <div className="flex items-end gap-4 max-w-md">
-            {!autoScoutRunning ? (
-              <>
-                <div className="flex-1 space-y-1.5">
-                  <Label htmlFor="scout-limit" className="text-xs font-semibold">Amount to Send</Label>
-                  <Input 
-                    id="scout-limit"
-                    type="number"
-                    value={batchLimit}
-                    onChange={(e) => setBatchLimit(e.target.value)}
-                    className="h-10"
-                    min="1"
-                    max={remaining}
-                  />
-                </div>
-                <Button
-                  onClick={handleAutoScout}
-                  disabled={contacts.length === 0 || remaining === 0}
-                  className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white h-10"
-                  id="auto-scout-btn"
-                >
-                  <Zap className="mr-2 h-4 w-4" />
-                  Start Auto Scout
-                </Button>
-              </>
-            ) : (
-              <Button
-                onClick={stopAutoScout}
-                variant="destructive"
-                className="w-full h-10"
-                id="stop-scout-btn"
-              >
-                <Square className="mr-2 h-4 w-4" />
-                Stop Auto Scout
-              </Button>
-            )}
-          </div>
-
-          {autoScoutRunning && (
-            <div className="mt-6 space-y-2">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Batch Progress</span>
-                <span>{autoScoutProgress}%</span>
+            <>
+              <div className="flex items-end gap-4 max-w-md">
+                {!autoScoutRunning ? (
+                  <>
+                    <div className="flex-1 space-y-1.5">
+                      <Label htmlFor="scout-limit" className="text-xs font-semibold">Amount to Send</Label>
+                      <Input 
+                        id="scout-limit"
+                        type="number"
+                        value={batchLimit}
+                        onChange={(e) => setBatchLimit(e.target.value)}
+                        className="h-10"
+                        min="1"
+                        max={remaining}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleAutoScout}
+                      disabled={contacts.length === 0 || remaining === 0}
+                      className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white h-10"
+                      id="auto-scout-btn"
+                    >
+                      <Zap className="mr-2 h-4 w-4" />
+                      Start Auto Scout
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    onClick={stopAutoScout}
+                    variant="destructive"
+                    className="w-full h-10"
+                    id="stop-scout-btn"
+                  >
+                    <Square className="mr-2 h-4 w-4" />
+                    Stop Auto Scout
+                  </Button>
+                )}
               </div>
-              <Progress value={autoScoutProgress} className="h-2" />
-              <p className="text-xs text-muted-foreground text-center italic">
-                Tip: Allow popups and keep this tab active for best results.
-              </p>
-            </div>
+
+              {autoScoutRunning && (
+                <div className="mt-6 space-y-2">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Batch Progress</span>
+                    <span>{autoScoutProgress}%</span>
+                  </div>
+                  <Progress value={autoScoutProgress} className="h-2" />
+                  <p className="text-xs text-muted-foreground text-center italic">
+                    Tip: Allow popups and keep this tab active for best results.
+                  </p>
+                </div>
+              )}
+            </>
           )}
           
           {campaign.sending_mode !== 'auto' && (
@@ -447,6 +450,7 @@ export default function CampaignSendPage() {
               </Button>
             </div>
           )}
+          
           {campaign.sending_mode === 'auto' && (
              <div className="mt-4">
                <Button 
@@ -461,8 +465,6 @@ export default function CampaignSendPage() {
                </Button>
              </div>
           )}
-          
-          </div>
         </CardContent>
       </Card>
 
