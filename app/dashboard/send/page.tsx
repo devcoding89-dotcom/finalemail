@@ -42,6 +42,17 @@ export default function QuickSendPage() {
   const [activeBatch, setActiveBatch] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [progress, setProgress] = useState(0)
+  const [batchLimit, setBatchLimit] = useState('10')
+  const [isAutoSending, setIsAutoSending] = useState(false)
+  const [sentInBatch, setSentInBatch] = useState(0)
+  const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Stop auto-sending on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current)
+    }
+  }, [])
 
   // Add emails from input
   const addEmails = () => {
@@ -99,32 +110,49 @@ export default function QuickSendPage() {
       toast.error('Please enter a subject first')
       return
     }
-    const pending = emails.findIndex(e => e.status === 'pending')
-    if (pending === -1) {
+    const pendingIndex = emails.findIndex(e => e.status === 'pending')
+    if (pendingIndex === -1) {
       toast.info('No pending emails!')
       return
     }
+
+    const limit = parseInt(batchLimit) || 1
     setActiveBatch(true)
-    sendNext(pending)
+    setIsAutoSending(true)
+    setSentInBatch(0)
+    
+    // Start the first one immediately
+    sendNext(pendingIndex, 0, limit)
   }
 
-  const sendNext = (index: number) => {
-    if (index >= emails.length) {
+  const sendNext = (index: number, currentBatchCount: number, limit: number) => {
+    if (index >= emails.length || currentBatchCount >= limit) {
+      setIsAutoSending(false)
       setActiveBatch(false)
       setCurrentIndex(-1)
-      toast.success('Batch complete!')
+      toast.success(currentBatchCount >= limit ? `Batch of ${currentBatchCount} complete!` : 'All emails sent!')
       return
     }
 
     const entry = emails[index]
     if (entry.status !== 'pending') {
-      sendNext(index + 1)
+      sendNext(index + 1, currentBatchCount, limit)
       return
     }
 
     setCurrentIndex(index)
-    window.open(getMailto(entry.email), '_blank')
+    const popup = window.open(getMailto(entry.email), '_blank')
     
+    // Check if popup was blocked
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      toast.error('Popup blocked! Please allow popups for this site.', {
+        description: 'Automatic sending requires popup permission.',
+        duration: 5000,
+      })
+      setIsAutoSending(false)
+      return
+    }
+
     // Mark as sent
     setEmails((prev) =>
       prev.map((e, i) => (i === index ? { ...e, status: 'sent' } : e))
@@ -140,9 +168,28 @@ export default function QuickSendPage() {
     // Update progress
     const sentCount = emails.filter(e => e.status === 'sent').length + 1
     setProgress(Math.round((sentCount / emails.length) * 100))
+    setSentInBatch(currentBatchCount + 1)
+
+    // Trigger next after delay if auto-sending
+    if (isAutoSending && (currentBatchCount + 1) < limit) {
+      autoSendTimerRef.current = setTimeout(() => {
+        // Find next pending
+        const nextPending = emails.findIndex((e, i) => i > index && e.status === 'pending')
+        if (nextPending !== -1) {
+          sendNext(nextPending, currentBatchCount + 1, limit)
+        } else {
+          setIsAutoSending(false)
+          setActiveBatch(false)
+          setCurrentIndex(-1)
+          toast.success('All pending emails sent!')
+        }
+      }, 3000) // 3 second delay between popups
+    }
   }
 
   const stopBatch = () => {
+    if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current)
+    setIsAutoSending(false)
     setActiveBatch(false)
     setCurrentIndex(-1)
   }
@@ -256,19 +303,42 @@ export default function QuickSendPage() {
         <Card className="md:border-indigo-500/20 md:bg-indigo-50/30 dark:md:bg-indigo-950/10">
           <CardContent className="p-4 md:p-6 space-y-4">
             {!activeBatch ? (
-              <Button
-                onClick={startBatch}
-                disabled={pendingCount === 0 || !subject.trim()}
-                className="w-full h-12 md:h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-xl shadow-indigo-500/20"
-              >
-                <Zap className="mr-2 h-5 w-5" />
-                Start Auto-Send ({pendingCount})
-              </Button>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 space-y-1.5">
+                    <Label htmlFor="batch-limit" className="text-[10px] font-bold uppercase text-slate-500 ml-1">Amount to Send</Label>
+                    <Input 
+                      id="batch-limit"
+                      type="number"
+                      value={batchLimit}
+                      onChange={(e) => setBatchLimit(e.target.value)}
+                      className="h-10 rounded-xl"
+                      min="1"
+                      max={pendingCount}
+                    />
+                  </div>
+                  <div className="flex-[2] pt-5">
+                    <Button
+                      onClick={startBatch}
+                      disabled={pendingCount === 0 || !subject.trim()}
+                      className="w-full h-10 text-sm font-bold rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/20"
+                    >
+                      <Zap className="mr-2 h-4 w-4" />
+                      Start Auto-Send
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-[10px] text-center text-slate-400 italic">
+                  Tip: Keep your browser tab open and allow popups.
+                </p>
+              </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1">
-                    <p className="text-xs font-bold text-indigo-600 uppercase mb-1">Sending Batch...</p>
+                    <p className="text-xs font-bold text-indigo-600 uppercase mb-1">
+                      {isAutoSending ? 'Auto-Sending...' : 'Paused'} ({sentInBatch}/{batchLimit})
+                    </p>
                     <p className="text-sm font-medium truncate">{emails[currentIndex]?.email}</p>
                   </div>
                   <Button variant="outline" size="sm" onClick={stopBatch} className="rounded-lg h-9">
@@ -278,15 +348,19 @@ export default function QuickSendPage() {
                 
                 <Progress value={progress} className="h-2.5 rounded-full" />
                 
-                <Button
-                  onClick={() => sendNext(currentIndex + 1)}
-                  className="w-full h-14 text-lg font-bold rounded-2xl bg-emerald-600 hover:bg-emerald-500 shadow-xl shadow-emerald-500/20 animate-pulse"
-                >
-                  Send Next Email
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+                {!isAutoSending && (
+                  <Button
+                    onClick={() => sendNext(currentIndex + 1, sentInBatch, parseInt(batchLimit))}
+                    className="w-full h-14 text-lg font-bold rounded-2xl bg-emerald-600 hover:bg-emerald-500 shadow-xl shadow-emerald-500/20 animate-pulse"
+                  >
+                    Send Next Email
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                )}
                 <p className="text-[11px] text-center text-slate-500 italic">
-                  Browsers block auto-popups. Click the button for each email.
+                  {isAutoSending 
+                    ? "Next email will open automatically in 3s..." 
+                    : "Browsers block auto-popups. Click to continue."}
                 </p>
               </div>
             )}

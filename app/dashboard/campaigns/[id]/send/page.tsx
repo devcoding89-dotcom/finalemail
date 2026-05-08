@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Card,
   CardContent,
@@ -43,6 +45,7 @@ interface CampaignDetail {
   status: string
   total_emails: number
   sent_count: number
+  list_id: string
 }
 
 export default function CampaignSendPage() {
@@ -53,6 +56,7 @@ export default function CampaignSendPage() {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [sentContacts, setSentContacts] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [batchLimit, setBatchLimit] = useState('10')
   const [autoScoutRunning, setAutoScoutRunning] = useState(false)
   const [autoScoutProgress, setAutoScoutProgress] = useState(0)
   const autoScoutAbort = useRef(false)
@@ -135,18 +139,21 @@ export default function CampaignSendPage() {
       return
     }
 
+    const limit = parseInt(batchLimit) || 1
+    const toSend = unsent.slice(0, limit)
+
     setAutoScoutRunning(true)
     autoScoutAbort.current = false
     setAutoScoutProgress(0)
 
-    for (let i = 0; i < unsent.length; i++) {
+    for (let i = 0; i < toSend.length; i++) {
       if (autoScoutAbort.current) {
-        toast.info(`Auto Scout stopped. Sent ${i} of ${unsent.length}.`)
+        toast.info(`Auto Scout stopped. Sent ${i} of ${toSend.length}.`)
         break
       }
 
-      const contact = unsent[i]
-      setAutoScoutProgress(Math.round(((i + 1) / unsent.length) * 100))
+      const contact = toSend[i]
+      setAutoScoutProgress(Math.round(((i + 1) / toSend.length) * 100))
 
       try {
         const res = await fetch(`/api/campaigns/${campaignId}/send`, {
@@ -157,7 +164,15 @@ export default function CampaignSendPage() {
         const json = await res.json()
 
         if (json.success) {
-          window.open(json.data.mailtoLink, '_blank')
+          const popup = window.open(json.data.mailtoLink, '_blank')
+          
+          if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+             toast.error('Popup blocked! Please allow popups to continue Auto Scout.', {
+               duration: 5000
+             })
+             break
+          }
+          
           setSentContacts((prev) => new Set(prev).add(contact.id))
           setCampaign((prev) =>
             prev ? { ...prev, sent_count: prev.sent_count + 1 } : prev
@@ -174,14 +189,14 @@ export default function CampaignSendPage() {
       }
 
       // Wait 5 seconds between sends to avoid overwhelming email client
-      if (i < unsent.length - 1 && !autoScoutAbort.current) {
+      if (i < toSend.length - 1 && !autoScoutAbort.current) {
         await new Promise((resolve) => setTimeout(resolve, 5000))
       }
     }
 
     setAutoScoutRunning(false)
     if (!autoScoutAbort.current) {
-      toast.success('Auto Scout complete! Check your email client.')
+      toast.success(`Auto Scout batch of ${toSend.length} complete! Check your email client.`)
     }
   }
 
@@ -211,7 +226,7 @@ export default function CampaignSendPage() {
     )
   }
 
-  const totalSent = sentContacts.size + (campaign?.sent_count || 0) - sentContacts.size
+  const remaining = contacts.length - sentContacts.size
   const progressPct =
     contacts.length > 0
       ? Math.round((sentContacts.size / contacts.length) * 100)
@@ -273,7 +288,7 @@ export default function CampaignSendPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {contacts.length - sentContacts.size}
+                  {remaining}
                 </p>
                 <p className="text-xs text-muted-foreground">Remaining</p>
               </div>
@@ -294,21 +309,36 @@ export default function CampaignSendPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
+          <div className="flex items-end gap-4 max-w-md">
             {!autoScoutRunning ? (
-              <Button
-                onClick={handleAutoScout}
-                disabled={contacts.length === 0 || sentContacts.size === contacts.length}
-                className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white"
-                id="auto-scout-btn"
-              >
-                <Zap className="mr-2 h-4 w-4" />
-                Start Auto Scout ({contacts.length - sentContacts.size} remaining)
-              </Button>
+              <>
+                <div className="flex-1 space-y-1.5">
+                  <Label htmlFor="scout-limit" className="text-xs font-semibold">Amount to Send</Label>
+                  <Input 
+                    id="scout-limit"
+                    type="number"
+                    value={batchLimit}
+                    onChange={(e) => setBatchLimit(e.target.value)}
+                    className="h-10"
+                    min="1"
+                    max={remaining}
+                  />
+                </div>
+                <Button
+                  onClick={handleAutoScout}
+                  disabled={contacts.length === 0 || remaining === 0}
+                  className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white h-10"
+                  id="auto-scout-btn"
+                >
+                  <Zap className="mr-2 h-4 w-4" />
+                  Start Auto Scout
+                </Button>
+              </>
             ) : (
               <Button
                 onClick={stopAutoScout}
                 variant="destructive"
+                className="w-full h-10"
                 id="stop-scout-btn"
               >
                 <Square className="mr-2 h-4 w-4" />
@@ -318,10 +348,14 @@ export default function CampaignSendPage() {
           </div>
 
           {autoScoutRunning && (
-            <div className="mt-4 space-y-2">
+            <div className="mt-6 space-y-2">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Batch Progress</span>
+                <span>{autoScoutProgress}%</span>
+              </div>
               <Progress value={autoScoutProgress} className="h-2" />
-              <p className="text-xs text-muted-foreground text-center">
-                Sending {autoScoutProgress}% — please don&apos;t close this tab
+              <p className="text-xs text-muted-foreground text-center italic">
+                Tip: Allow popups and keep this tab active for best results.
               </p>
             </div>
           )}
@@ -332,7 +366,7 @@ export default function CampaignSendPage() {
       {sentContacts.size > 0 && (
         <div className="space-y-2">
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Session progress</span>
+            <span>Overall Session progress</span>
             <span>{progressPct}%</span>
           </div>
           <Progress value={progressPct} className="h-2" />
