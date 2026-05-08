@@ -41,7 +41,7 @@ export function DashboardNav() {
               'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
               isActive
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                : 'text-white/50 hover:bg-white/10 hover:text-white'
             )}
           >
             <item.icon className="h-4 w-4" />
