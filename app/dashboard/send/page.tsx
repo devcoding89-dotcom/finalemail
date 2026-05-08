@@ -46,7 +46,16 @@ export default function QuickSendPage() {
   const [batchLimit, setBatchLimit] = useState('10')
   const [isAutoSending, setIsAutoSending] = useState(false)
   const [sentInBatch, setSentInBatch] = useState(0)
+  
+  // Refs for stable values across timeouts
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isAutoSendingRef = useRef(false)
+  const emailsRef = useRef<EmailEntry[]>([])
+
+  // Keep emailsRef in sync
+  useEffect(() => {
+    emailsRef.current = emails
+  }, [emails])
 
   // Stop auto-sending on unmount
   useEffect(() => {
@@ -86,26 +95,7 @@ export default function QuickSendPage() {
     return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(personalizedBody)}`
   }
 
-  // Send single email
-  const sendOne = (email: string) => {
-    if (!subject.trim()) {
-      toast.error('Please enter a subject')
-      return
-    }
-    window.open(getMailto(email), '_blank')
-    setEmails((prev) =>
-      prev.map((e) => (e.email === email ? { ...e, status: 'sent' } : e))
-    )
-
-    // Log to DB
-    fetch('/api/logs/quick-send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    }).catch(console.error)
-  }
-
-  // BATCH SEND LOGIC (Phone Friendly)
+  // BATCH SEND LOGIC
   const startBatch = () => {
     if (!subject.trim()) {
       toast.error('Please enter a subject first')
@@ -120,6 +110,7 @@ export default function QuickSendPage() {
     const limit = parseInt(batchLimit) || 1
     setActiveBatch(true)
     setIsAutoSending(true)
+    isAutoSendingRef.current = true
     setSentInBatch(0)
     
     // Start the first one immediately
@@ -127,34 +118,45 @@ export default function QuickSendPage() {
   }
 
   const sendNext = (index: number, currentBatchCount: number, limit: number) => {
-    if (index >= emails.length || currentBatchCount >= limit) {
+    // Check if we should stop
+    if (index >= emailsRef.current.length || currentBatchCount >= limit || !isAutoSendingRef.current) {
       setIsAutoSending(false)
+      isAutoSendingRef.current = false
       setActiveBatch(false)
       setCurrentIndex(-1)
-      toast.success(currentBatchCount >= limit ? `Batch of ${currentBatchCount} complete!` : 'All emails sent!')
+      if (currentBatchCount > 0) {
+        toast.success(currentBatchCount >= limit ? `Batch of ${currentBatchCount} complete!` : 'Auto-send stopped.')
+      }
       return
     }
 
-    const entry = emails[index]
+    const entry = emailsRef.current[index]
     if (entry.status !== 'pending') {
       sendNext(index + 1, currentBatchCount, limit)
       return
     }
 
     setCurrentIndex(index)
-    const popup = window.open(getMailto(entry.email), '_blank')
     
-    // Check if popup was blocked
-    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-      toast.error('Popup blocked! Please allow popups for this site.', {
-        description: 'Automatic sending requires popup permission.',
+    // Attempt to open the mailto link
+    // Note: We use window.open for better handling in some browsers
+    const mailtoUrl = getMailto(entry.email)
+    const popup = window.open(mailtoUrl, '_blank')
+    
+    // On some devices, window.open returns null for mailto.
+    // If it's a direct user click (first one), we assume it worked.
+    // For subsequent ones in the loop, we check for blocks.
+    if (currentBatchCount > 0 && (!popup || popup.closed || typeof popup.closed === 'undefined')) {
+      toast.error('Popup blocked!', {
+        description: 'Your browser blocked the next email. Please allow popups for this site.',
         duration: 5000,
       })
       setIsAutoSending(false)
+      isAutoSendingRef.current = false
       return
     }
 
-    // Mark as sent
+    // Mark as sent in state
     setEmails((prev) =>
       prev.map((e, i) => (i === index ? { ...e, status: 'sent' } : e))
     )
@@ -167,39 +169,40 @@ export default function QuickSendPage() {
     }).catch(console.error)
 
     // Update progress
-    const sentCount = emails.filter(e => e.status === 'sent').length + 1
-    setProgress(Math.round((sentCount / emails.length) * 100))
+    const totalSent = emailsRef.current.filter(e => e.status === 'sent').length + 1
+    setProgress(Math.round((totalSent / emailsRef.current.length) * 100))
     setSentInBatch(currentBatchCount + 1)
 
     // Trigger next after delay if auto-sending
-    if (isAutoSending && (currentBatchCount + 1) < limit) {
+    if (isAutoSendingRef.current && (currentBatchCount + 1) < limit) {
       autoSendTimerRef.current = setTimeout(() => {
-        // Find next pending
-        const nextPending = emails.findIndex((e, i) => i > index && e.status === 'pending')
+        // Find next pending starting from after current index
+        const nextPending = emailsRef.current.findIndex((e, i) => i > index && e.status === 'pending')
         if (nextPending !== -1) {
           sendNext(nextPending, currentBatchCount + 1, limit)
         } else {
           setIsAutoSending(false)
+          isAutoSendingRef.current = false
           setActiveBatch(false)
           setCurrentIndex(-1)
-          toast.success('All pending emails sent!')
+          toast.success('All pending emails in list sent!')
         }
-      }, 3000) // 3 second delay between popups
+      }, 4000) // 4 second delay to allow user to see/interact with mail app
     }
   }
 
   const stopBatch = () => {
     if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current)
     setIsAutoSending(false)
+    isAutoSendingRef.current = false
     setActiveBatch(false)
     setCurrentIndex(-1)
   }
 
-  const sentCount = emails.filter((e) => e.status === 'sent').length
   const pendingCount = emails.filter((e) => e.status === 'pending').length
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto pb-24 md:pb-8">
+    <div className="space-y-6 max-w-2xl mx-auto pb-32 md:pb-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -308,19 +311,19 @@ export default function QuickSendPage() {
            <div className="space-y-2">
               <Label htmlFor="batch-limit" className="text-xs font-bold uppercase text-slate-500 ml-1 flex justify-between">
                 <span>Amount to Send</span>
-                <span className="text-indigo-600">{batchLimit} emails</span>
+                <span className="text-indigo-600 font-bold">{batchLimit} emails</span>
               </Label>
               <Input 
                 id="batch-limit"
                 type="number"
                 value={batchLimit}
                 onChange={(e) => setBatchLimit(e.target.value)}
-                className="h-11 rounded-xl bg-white dark:bg-slate-950"
+                className="h-11 rounded-xl bg-white dark:bg-slate-950 font-medium"
                 min="1"
                 max={pendingCount}
               />
               <p className="text-[10px] text-slate-400 ml-1">
-                How many emails should be sent in this session? (Max: {pendingCount})
+                Number of emails to send in this automatic sequence.
               </p>
            </div>
 
@@ -330,47 +333,55 @@ export default function QuickSendPage() {
               className="w-full h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-xl shadow-indigo-500/20 transition-all active:scale-95"
             >
               <Zap className="mr-2 h-5 w-5" />
-              {activeBatch ? 'Auto-Sending...' : `Start Auto-Send (${Math.min(parseInt(batchLimit) || 0, pendingCount)})`}
+              {activeBatch ? 'Sending...' : 'Start Auto-Send Now'}
             </Button>
             
             <p className="text-[11px] text-center text-slate-500 italic">
-               Note: You must allow popups in your browser.
+               Note: This will open your mail app for each email.
             </p>
         </CardContent>
       </Card>
 
       {/* Active Session Status (Floating Footer) */}
       {activeBatch && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 z-50 animate-in slide-in-from-bottom duration-300">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 z-50 animate-in slide-in-from-bottom duration-300 shadow-2xl">
            <div className="max-w-2xl mx-auto space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1">
-                  <p className="text-xs font-bold text-indigo-600 uppercase mb-1">
-                    {isAutoSending ? 'Auto-Sending...' : 'Paused'} ({sentInBatch}/{batchLimit})
+                  <p className="text-xs font-bold text-indigo-600 uppercase mb-0.5 flex items-center gap-2">
+                    <RefreshCw className={cn("h-3 w-3", isAutoSending && "animate-spin")} />
+                    {isAutoSending ? 'Auto-Sending Batch' : 'Paused'} 
+                    <span className="text-slate-400 font-normal ml-2">({sentInBatch} of {batchLimit})</span>
                   </p>
-                  <p className="text-sm font-medium truncate">{emails[currentIndex]?.email}</p>
+                  <p className="text-sm font-bold truncate text-slate-700 dark:text-slate-200">
+                    {emails[currentIndex]?.email}
+                  </p>
                 </div>
-                <Button variant="destructive" size="sm" onClick={stopBatch} className="rounded-lg h-9">
+                <Button variant="destructive" size="sm" onClick={stopBatch} className="rounded-lg h-9 font-bold">
                   <Square className="mr-2 h-4 w-4" /> Stop
                 </Button>
               </div>
               
-              <Progress value={progress} className="h-2.5 rounded-full" />
+              <Progress value={progress} className="h-2 rounded-full" />
               
               {!isAutoSending && (
                 <Button
-                  onClick={() => sendNext(currentIndex + 1, sentInBatch, parseInt(batchLimit))}
+                  onClick={() => {
+                    isAutoSendingRef.current = true
+                    setIsAutoSending(true)
+                    sendNext(currentIndex + 1, sentInBatch, parseInt(batchLimit))
+                  }}
                   className="w-full h-12 text-md font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 shadow-lg"
                 >
-                  Send Next Email
+                  Resume Auto-Send
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               )}
               
-              <p className="text-[10px] text-center text-slate-400">
+              <p className="text-[10px] text-center text-slate-400 font-medium">
                 {isAutoSending 
-                  ? "Keep this tab open. Next email in 3s..." 
-                  : "Auto-send paused. Click button to continue manually."}
+                  ? "Mail app opening... next one in 4s. Don't close this tab." 
+                  : "Sequence paused. Click Resume to continue."}
               </p>
            </div>
         </div>
