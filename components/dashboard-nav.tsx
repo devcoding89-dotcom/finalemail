@@ -83,48 +83,50 @@ export function MobileNav() {
 
   return (
     <>
+      {/* The Purple Square Button */}
       <Button
         variant="default"
         size="icon"
-        className="md:hidden h-11 w-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 relative z-[70] rounded-xl"
-        onClick={() => setOpen(!open)}
+        className="md:hidden h-11 w-11 bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-xl shadow-indigo-500/30 relative z-[9999] rounded-xl flex items-center justify-center"
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(!open)
+        }}
         id="mobile-menu-btn"
       >
-        {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        {open ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
       </Button>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer container */}
       <div 
         className={cn(
-          "fixed inset-0 z-[65] md:hidden",
+          "fixed inset-0 z-[9990] md:hidden",
           open ? "block" : "hidden"
         )}
       >
-        {/* Dark backdrop */}
+        {/* SOLID Dark backdrop */}
         <div
-          className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity"
+          className="absolute inset-0 bg-[#020617]/95 transition-opacity duration-300"
           onClick={() => setOpen(false)}
         />
 
-        {/* Slide-in panel */}
+        {/* SOLID Dark panel */}
         <div
           className={cn(
-            "absolute left-0 top-0 h-full w-[280px] bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col transition-transform duration-300",
+            "absolute left-0 top-0 h-full w-[85%] max-w-[300px] bg-[#0f172a] border-r border-white/10 shadow-[20px_0_60px_-15px_rgba(0,0,0,0.5)] flex flex-col transition-transform duration-300 ease-out",
             open ? "translate-x-0" : "-translate-x-full"
           )}
         >
           {/* Header */}
-          <div className="flex items-center p-6 border-b border-slate-800/60">
-            <div className="flex items-center gap-1.5 font-bold text-xl">
-              <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-                Email
-              </span>
+          <div className="flex items-center p-6 border-b border-white/5 bg-[#1e293b]/30">
+            <div className="flex items-center gap-2 font-black text-2xl tracking-tighter">
+              <span className="text-[#818cf8]">Email</span>
               <span className="text-white">Send</span>
             </div>
           </div>
 
           {/* Nav links */}
-          <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
+          <nav className="p-4 space-y-2.5 flex-1 overflow-y-auto">
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -136,24 +138,27 @@ export function MobileNav() {
                   href={item.href}
                   onClick={() => setOpen(false)}
                   className={cn(
-                    'flex items-center gap-3 rounded-xl px-4 py-4 text-base font-bold transition-all',
+                    'flex items-center gap-4 rounded-xl px-5 py-4 text-lg font-bold transition-all active:scale-95',
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20 scale-[1.02]'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      ? 'bg-[#4f46e5] text-white shadow-lg shadow-indigo-500/40'
+                      : 'text-white/80 bg-white/5 hover:bg-white/10 hover:text-white'
                   )}
                 >
-                  <item.icon className="h-5 w-5" />
+                  <item.icon className={cn("h-6 w-6", isActive ? "text-white" : "text-[#6366f1]")} />
                   {item.label}
                 </Link>
               )
             })}
           </nav>
 
-          {/* Credit */}
-          <div className="p-6 border-t border-slate-800/60 text-center">
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-              Created by <span className="text-indigo-500">Cyber AK</span>
-            </p>
+          {/* Footer */}
+          <div className="p-8 border-t border-white/5 text-center bg-[#020617]/50">
+             <div className="space-y-1">
+                <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-black">
+                  Powered By
+                </p>
+                <p className="text-sm font-bold text-indigo-400">Cyber AK</p>
+             </div>
           </div>
         </div>
       </div>
