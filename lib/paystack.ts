@@ -45,7 +45,7 @@ export async function initializePayment(
       email,
       amount: 50000, // ₦500 in kobo (500 × 100)
       currency: 'NGN',
-      callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/subscribe?verify=true`,
+      callback_url: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')}/dashboard/subscribe?verify=true`,
       metadata: {
         user_id: userId,
         plan: 'premium',
