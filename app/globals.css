@@ -341,3 +341,27 @@
     opacity: 0;
   }
 }
+
+/* ==========================================
+   MARQUEE ANIMATION
+   ========================================== */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee 30s linear infinite;
+  /* Width should be 200% so we can scroll half of it and loop seamlessly */
+  width: max-content;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

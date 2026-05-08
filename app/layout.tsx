@@ -6,6 +6,7 @@ import { PageTransition } from '@/components/page-transition'
 import { MobileInstallBanner } from '@/components/mobile-install-banner'
 import { PwaProvider } from '@/components/pwa-provider'
 import { FeatureAnnouncementModal } from '@/components/feature-announcement-modal'
+import { FeatureTicker } from '@/components/feature-ticker'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -43,6 +44,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <PwaProvider>
+          <FeatureTicker />
           <PageTransition />
           {children}
           <Toaster position="top-center" richColors />
