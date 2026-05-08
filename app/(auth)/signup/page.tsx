@@ -28,38 +28,24 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
 
-    try {
-      // 1. Create the user via server-side API (to auto-confirm)
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, full_name: fullName }),
-      })
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Signup failed')
-      }
-
-      // 2. Automatically sign in after creation
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (loginError) {
-        throw loginError
-      }
-
+    if (error) {
+      toast.error(error.message)
+    } else {
       toast.success('Account created!')
       router.push('/dashboard')
       router.refresh()
-    } catch (error: any) {
-      toast.error(error.message)
-    } finally {
-      setLoading(false)
     }
+    setLoading(false)
   }
 
   const handleGoogleSignup = async () => {
