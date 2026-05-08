@@ -1,44 +1,13 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import {
-  Send,
-  Zap,
-  CheckCircle2,
-  Clock,
-  RefreshCw,
-  Square,
-  Mail,
-  ArrowLeft,
-  ExternalLink,
-  Play,
-  ArrowRight,
-} from 'lucide-react'
-import type { Contact } from '@/types'
-import { CampaignStatusBadge } from '@/components/campaign-status-badge'
-import { EmailJobStatusBadge } from '@/components/email-job-status'
+import { Copy, Mail, Zap, Check, X, Pause, RefreshCw, ArrowLeft, User, Building } from 'lucide-react'
 import Link from 'next/link'
 
 interface CampaignDetail {
@@ -50,6 +19,18 @@ interface CampaignDetail {
   list_id: string
   current_index: number
   sending_mode: 'manual' | 'quick' | 'auto'
+  templates: {
+    subject: string
+    body: string
+  }[] | any
+}
+
+interface Contact {
+  id: string
+  email: string
+  name: string
+  company: string
+  status: string
 }
 
 export default function CampaignSendPage() {
@@ -58,66 +39,30 @@ export default function CampaignSendPage() {
 
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
-  const [sentContacts, setSentContacts] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
-  const [batchLimit, setBatchLimit] = useState('10')
-  const [autoScoutRunning, setAutoScoutRunning] = useState(false)
-  const [autoScoutProgress, setAutoScoutProgress] = useState(0)
-  const [countdown, setCountdown] = useState(0)
-  const [currentContactEmail, setCurrentContactEmail] = useState('')
-  const autoScoutAbort = useRef(false)
-  const isAutoScoutRunningRef = useRef(false)
-  const nextTriggerRef = useRef<(() => void) | null>(null)
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Sync ref
-  useEffect(() => {
-    isAutoScoutRunningRef.current = autoScoutRunning
-  }, [autoScoutRunning])
-
-  // Focus detection for seamless loop
-  useEffect(() => {
-    const handleFocus = () => {
-      if (isAutoScoutRunningRef.current && nextTriggerRef.current) {
-        console.log('[AutoScout] Tab focused, triggering next email immediately...')
-        // Small delay to let the user see the UI
-        setTimeout(() => {
-          if (nextTriggerRef.current) nextTriggerRef.current()
-        }, 800)
-      }
-    }
-
-    window.addEventListener('focus', handleFocus)
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
-    }
-  }, [])
+  const [sendingMode, setSendingMode] = useState<'manual' | 'quick' | 'auto'>('manual')
+  const [currentIndex, setCurrentIndex] = useState(0)
 
   const fetchCampaignData = useCallback(async () => {
     try {
       setLoading(true)
-
-      // Fetch campaign
       const campaignRes = await fetch('/api/campaigns')
       const campaignJson = await campaignRes.json()
+      
       if (campaignJson.success) {
-        const found = campaignJson.data.find(
-          (c: CampaignDetail) => c.id === campaignId
-        )
+        const found = campaignJson.data.find((c: CampaignDetail) => c.id === campaignId)
         if (found) {
           setCampaign(found)
+          setSendingMode(found.sending_mode || 'manual')
+          setCurrentIndex(found.current_index || 0)
 
-          // Fetch contacts for this campaign's list
-          const contactsRes = await fetch(
-            `/api/contacts?listId=${found.list_id}`
-          )
+          const contactsRes = await fetch(`/api/contacts?listId=${found.list_id}`)
           const contactsJson = await contactsRes.json()
           if (contactsJson.success) {
             setContacts(
-              contactsJson.data.filter(
-                (c: Contact) => c.status !== 'invalid' && c.status !== 'bounced'
-              )
+              contactsJson.data
+                .filter((c: Contact) => c.status !== 'invalid' && c.status !== 'bounced')
+                .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
             )
           }
         }
@@ -133,125 +78,53 @@ export default function CampaignSendPage() {
     fetchCampaignData()
   }, [fetchCampaignData])
 
-  // Send a single email — generates mailto link and opens it
-  const handleSendOne = async (contactId: string) => {
+  const handleUpdateMode = async (mode: 'manual' | 'quick' | 'auto') => {
+    setSendingMode(mode)
+    // Update in DB (optional, assuming we had an endpoint)
+    toast.success(`Switched to ${mode} mode`)
+  }
+
+  const handleMarkSent = async (status: 'sent' | 'failed') => {
+    if (!campaign || !contacts[currentIndex]) return
+
     try {
-      const res = await fetch(`/api/campaigns/${campaignId}/send`, {
+      const res = await fetch(`/api/campaigns/${campaignId}/mark-sent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactId }),
+        body: JSON.stringify({ 
+          contactId: contacts[currentIndex].id,
+          method: sendingMode
+        }),
       })
-      const json = await res.json()
 
-      if (json.success) {
-        // Open mailto link in new tab
-        window.open(json.data.mailtoLink, '_blank')
-
-        // Mark as sent in UI
-        setSentContacts((prev) => new Set(prev).add(contactId))
-
-        // Update campaign counter
-        setCampaign((prev) =>
-          prev ? { ...prev, sent_count: prev.sent_count + 1 } : prev
-        )
-
-        toast.success(`Email ready for ${json.data.contactEmail}`)
+      if (res.ok) {
+        setCurrentIndex(prev => prev + 1)
+        setCampaign(prev => prev ? { 
+          ...prev, 
+          sent_count: status === 'sent' ? prev.sent_count + 1 : prev.sent_count,
+          current_index: prev.current_index + 1
+        } : prev)
+        
+        if (status === 'sent') toast.success('Marked as sent!')
+        else toast.info('Skipped contact.')
       } else {
-        toast.error(json.error || 'Failed to send')
+        toast.error('Failed to update status')
       }
     } catch {
-      toast.error('Failed to generate email')
+      toast.error('Network error')
     }
   }
 
-  // Auto Scout — batch send with delay between each
-  const handleAutoScout = async () => {
-    const unsent = contacts.filter((c) => !sentContacts.has(c.id))
-    if (unsent.length === 0) {
-      toast.info('All contacts have been sent already!')
-      return
-    }
-
-    const limit = parseInt(batchLimit) || 1
-    const toSend = unsent.slice(0, limit)
-
-    setAutoScoutRunning(true)
-    autoScoutAbort.current = false
-    setAutoScoutProgress(0)
-
-    for (let i = 0; i < toSend.length; i++) {
-      if (autoScoutAbort.current) {
-        toast.info(`Auto Scout stopped. Sent ${i} of ${toSend.length}.`)
-        break
-      }
-
-      const contact = toSend[i]
-      setCurrentContactEmail(contact.email)
-      setAutoScoutProgress(Math.round(((i + 1) / toSend.length) * 100))
-
-      try {
-        const res = await fetch(`/api/campaigns/${campaignId}/send`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contactId: contact.id }),
-        })
-        const json = await res.json()
-
-        if (json.success) {
-          // Use location.href for smoother mailto handling (doesn't open empty tabs)
-          window.location.href = json.data.mailtoLink
-          
-          setSentContacts((prev) => new Set(prev).add(contact.id))
-          setCampaign((prev) =>
-            prev ? { ...prev, sent_count: prev.sent_count + 1 } : prev
-          )
-        } else {
-          if (res.status === 429) {
-            toast.error('Daily limit reached! Upgrade to Premium.')
-            break
-          }
-          toast.error(`Failed for ${contact.email}: ${json.error}`)
-        }
-      } catch {
-        toast.error(`Error sending to ${contact.email}`)
-      }
-
-      // Wait for next with focus-triggered skip
-      if (i < toSend.length - 1 && !autoScoutAbort.current) {
-        setCountdown(5)
-        await new Promise<void>((resolve) => {
-          nextTriggerRef.current = () => {
-             nextTriggerRef.current = null
-             if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
-             setCountdown(0)
-             resolve()
-          }
-          
-          if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
-          countdownIntervalRef.current = setInterval(() => {
-            setCountdown((prev) => {
-              if (prev <= 1) {
-                if (nextTriggerRef.current) nextTriggerRef.current()
-                return 0
-              }
-              return prev - 1
-            })
-          }, 1000)
-        })
-      }
-    }
-
-    setAutoScoutRunning(false)
-    if (!autoScoutAbort.current) {
-      toast.success(`Auto Scout batch of ${toSend.length} complete! Check your email client.`)
-    }
+  const handleCopyEmail = () => {
+    if (!personalizedBody) return
+    navigator.clipboard.writeText(personalizedBody)
+    toast.success('Email copied to clipboard!')
   }
 
-  const stopAutoScout = () => {
-    autoScoutAbort.current = true
-    if (nextTriggerRef.current) nextTriggerRef.current() // Wake up the promise loop
-    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
-    setCountdown(0)
+  const handleOpenGmail = () => {
+    if (!currentContact) return
+    const mailtoLink = `mailto:${currentContact.email}?subject=${encodeURIComponent(personalizedSubject)}&body=${encodeURIComponent(personalizedBody)}`
+    window.open(mailtoLink, '_blank')
   }
 
   if (loading) {
@@ -262,350 +135,183 @@ export default function CampaignSendPage() {
     )
   }
 
-  if (!campaign) {
+  if (!campaign || contacts.length === 0) {
     return (
       <div className="text-center py-20">
-        <p className="text-muted-foreground">Campaign not found</p>
+        <p className="text-muted-foreground">Campaign not found or no contacts.</p>
         <Link href="/dashboard/campaigns">
           <Button variant="outline" className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Campaigns
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Campaigns
           </Button>
         </Link>
       </div>
     )
   }
 
-  const remaining = contacts.length - sentContacts.size
-  const progressPct =
-    contacts.length > 0
-      ? Math.round((sentContacts.size / contacts.length) * 100)
-      : 0
+  const isComplete = currentIndex >= contacts.length
+  const currentContact = isComplete ? null : contacts[currentIndex]
+  const template = campaign.templates?.[0] || campaign.templates
+
+  let personalizedSubject = ''
+  let personalizedBody = ''
+
+  if (currentContact && template) {
+    const contactName = currentContact.name || 'there'
+    const contactCompany = currentContact.company || 'your company'
+    personalizedSubject = template.subject
+      .replace(/\{name\}/gi, contactName)
+      .replace(/\{company\}/gi, contactCompany)
+    personalizedBody = template.body
+      .replace(/\{name\}/gi, contactName)
+      .replace(/\{company\}/gi, contactCompany)
+  }
+
+  const progressPct = contacts.length > 0 ? Math.round((currentIndex / contacts.length) * 100) : 0
 
   return (
-    <div className="space-y-6">
-      {/* Back + header */}
-      <div className="flex items-center gap-4">
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
         <Link href="/dashboard/campaigns">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="sm" className="text-muted-foreground">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
         </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
-            {campaign.name}
-            <CampaignStatusBadge status={campaign.status} />
-          </h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            Send personalized emails to your contacts
-          </p>
-        </div>
+        <h1 className="text-xl font-bold truncate max-w-[200px]">{campaign.name}</h1>
       </div>
 
-      {/* Stats bar */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-indigo-500/10 p-2.5">
-                <Mail className="h-5 w-5 text-indigo-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{contacts.length}</p>
-                <p className="text-xs text-muted-foreground">Total Contacts</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-emerald-500/10 p-2.5">
-                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{sentContacts.size}</p>
-                <p className="text-xs text-muted-foreground">Sent This Session</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-amber-500/10 p-2.5">
-                <Clock className="h-5 w-5 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {remaining}
-                </p>
-                <p className="text-xs text-muted-foreground">Remaining</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Auto Scout section */}
-      <Card className="border-indigo-500/20 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 dark:from-indigo-950/20 dark:to-violet-950/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center justify-between">
+      <Card className="border-indigo-500/20 shadow-xl dark:bg-slate-900/50">
+        <CardHeader className="pb-4 border-b border-white/5">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Sending Controls</CardTitle>
             <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-amber-500" />
-              Auto Scout
+              <span className="text-sm font-medium text-muted-foreground">Mode:</span>
+              <Select value={sendingMode} onValueChange={(val: any) => handleUpdateMode(val)}>
+                <SelectTrigger className="w-[140px] h-8 text-xs bg-slate-100 dark:bg-slate-800 border-none">
+                  <SelectValue placeholder="Select Mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="quick">Quick Send</SelectItem>
+                  <SelectItem value="auto">Auto Scout</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Badge variant="outline" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20">
-              {campaign.sending_mode === 'auto' ? 'Full Automation' : 'Quick Send (mailto)'}
-            </Badge>
-          </CardTitle>
-          <CardDescription>
-            {campaign.sending_mode === 'auto' 
-              ? 'Use the Auto Scout Chrome Extension for full 100% browser automation.'
-              : 'Automatically open email for each contact with 5-second intervals'}
-          </CardDescription>
+          </div>
         </CardHeader>
-        <CardContent>
-          {campaign.sending_mode === 'auto' ? (
-            <div className="bg-indigo-950/40 p-4 rounded-lg border border-indigo-500/30">
-              <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
-                <Play className="h-4 w-4" /> Ready for Chrome Extension
-              </h4>
-              <p className="text-sm text-slate-300 mb-4">
-                You have configured this campaign for Full Automation. To start sending, open the <strong>Auto Scout Chrome Extension</strong> and paste this Campaign ID:
-              </p>
-              <code className="block w-full p-3 bg-black/50 rounded text-indigo-300 font-mono text-sm border border-white/5 select-all text-center">
-                {campaign.id}
-              </code>
-              <p className="text-xs text-slate-500 mt-3 text-center">
-                Current Index: {campaign.current_index || 0} / {contacts.length}
-              </p>
+        
+        <CardContent className="pt-6 space-y-6">
+          {/* Progress */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm font-medium">
+              <span>Progress: {currentIndex} / {contacts.length} sent</span>
+              <span className="text-indigo-500">{progressPct}%</span>
+            </div>
+            <Progress value={progressPct} className="h-2" />
+          </div>
+
+          {isComplete ? (
+            <div className="py-12 text-center space-y-4">
+              <div className="h-16 w-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto">
+                <Check className="h-8 w-8 text-emerald-500" />
+              </div>
+              <h3 className="text-xl font-bold">Campaign Complete!</h3>
+              <p className="text-muted-foreground">All contacts in this list have been processed.</p>
             </div>
           ) : (
             <>
-              <div className="flex items-end gap-4 max-w-md">
-                {!autoScoutRunning ? (
-                  <>
-                    <div className="flex-1 space-y-1.5">
-                      <Label htmlFor="scout-limit" className="text-xs font-semibold">Amount to Send</Label>
-                      <Input 
-                        id="scout-limit"
-                        type="number"
-                        value={batchLimit}
-                        onChange={(e) => setBatchLimit(e.target.value)}
-                        className="h-10"
-                        min="1"
-                        max={remaining}
-                      />
-                    </div>
-                    <Button
-                      onClick={handleAutoScout}
-                      disabled={contacts.length === 0 || remaining === 0}
-                      className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white h-10"
-                      id="auto-scout-btn"
-                    >
-                      <Zap className="mr-2 h-4 w-4" />
-                      Start Auto Scout
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    onClick={stopAutoScout}
-                    variant="destructive"
-                    className="w-full h-10"
-                    id="stop-scout-btn"
-                  >
-                    <Square className="mr-2 h-4 w-4" />
-                    Stop Auto Scout
-                  </Button>
-                )}
+              {/* Current Contact Info */}
+              <div className="bg-slate-100 dark:bg-slate-800/50 p-4 rounded-xl space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Current Contact:</p>
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-slate-400" />
+                  <span className="font-mono text-sm">{currentContact?.email}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <User className="h-4 w-4 text-slate-400" />
+                  <span className="text-sm">{currentContact?.name || 'No name'}</span>
+                  <span className="text-slate-300">@</span>
+                  <Building className="h-4 w-4 text-slate-400" />
+                  <span className="text-sm">{currentContact?.company || 'No company'}</span>
+                </div>
               </div>
 
-              {autoScoutRunning && (
-                <div className="mt-6 space-y-2">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Batch Progress</span>
-                    <span>{autoScoutProgress}%</span>
-                  </div>
-                  <Progress value={autoScoutProgress} className="h-2" />
-                  <p className="text-xs text-muted-foreground text-center italic">
-                    Tip: Allow popups and keep this tab active for best results.
-                  </p>
+              {/* Email Preview */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-black">
+                <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-3 text-sm font-medium flex gap-2">
+                  <span className="text-muted-foreground">Subject:</span> {personalizedSubject}
                 </div>
-              )}
+                <div className="p-4 text-sm whitespace-pre-wrap font-sans leading-relaxed text-slate-700 dark:text-slate-300 min-h-[120px]">
+                  {personalizedBody}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Button 
+                  variant="outline" 
+                  className={`w-full ${sendingMode === 'manual' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
+                  onClick={handleCopyEmail}
+                >
+                  <Copy className="mr-2 h-4 w-4" /> Copy Email
+                </Button>
+                
+                <Button 
+                  variant="outline"
+                  className={`w-full ${sendingMode === 'quick' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
+                  onClick={handleOpenGmail}
+                >
+                  <Mail className="mr-2 h-4 w-4" /> Open in Gmail
+                </Button>
+
+                <div className="relative">
+                  <Button 
+                    variant="outline"
+                    className={`w-full ${sendingMode === 'auto' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
+                    onClick={() => {
+                      if (sendingMode !== 'auto') handleUpdateMode('auto')
+                      else toast.info('Open the Chrome Extension to start Auto Scout!')
+                    }}
+                  >
+                    <Zap className="mr-2 h-4 w-4" /> Auto Scout
+                  </Button>
+                  {sendingMode === 'auto' && (
+                    <div className="absolute top-12 left-0 right-0 p-2 bg-indigo-600 text-white text-xs rounded shadow-xl z-10 animate-in fade-in slide-in-from-top-2">
+                      Open Extension & paste ID: <strong className="block mt-1 font-mono text-center bg-black/30 p-1 rounded select-all">{campaignId}</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Resolution Buttons */}
+              <div className="pt-6 border-t border-white/5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">After sending:</p>
+                <div className="flex gap-3">
+                  <Button 
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={() => handleMarkSent('sent')}
+                  >
+                    <Check className="mr-2 h-4 w-4" /> Sent — Next
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    className="flex-1"
+                    onClick={() => handleMarkSent('failed')}
+                  >
+                    <X className="mr-2 h-4 w-4" /> Failed — Skip
+                  </Button>
+                </div>
+              </div>
+
             </>
           )}
-          
-          {campaign.sending_mode !== 'auto' && (
-            <div className="mt-4 pt-4 border-t border-white/5">
-              <Button 
-                variant="link" 
-                className="text-xs text-indigo-400 p-0 h-auto"
-                onClick={async () => {
-                  toast.success("Switched to Full Automation mode!");
-                  setCampaign(prev => prev ? {...prev, sending_mode: 'auto'} : prev);
-                }}
-              >
-                Switch to Full Chrome Extension Automation →
-              </Button>
-            </div>
-          )}
-          
-          {campaign.sending_mode === 'auto' && (
-             <div className="mt-4">
-               <Button 
-                 variant="link" 
-                 className="text-xs text-slate-400 p-0 h-auto"
-                 onClick={async () => {
-                   toast.success("Switched back to Quick Send mode");
-                   setCampaign(prev => prev ? {...prev, sending_mode: 'quick'} : prev);
-                 }}
-               >
-                 ← Back to Quick Send (mailto)
-               </Button>
-             </div>
-          )}
+
+          <div className="pt-4 flex justify-center">
+             <Button variant="ghost" size="sm" className="text-muted-foreground">
+               <Pause className="mr-2 h-4 w-4" /> Pause Campaign
+             </Button>
+          </div>
         </CardContent>
       </Card>
-
-      {/* Session progress */}
-      {sentContacts.size > 0 && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Overall Session progress</span>
-            <span>{progressPct}%</span>
-          </div>
-          <Progress value={progressPct} className="h-2" />
-        </div>
-      )}
-
-      {/* Contacts table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Contacts</CardTitle>
-          <CardDescription>
-            Click &quot;Send&quot; to open your email client with a pre-filled,
-            personalized email
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-lg border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead className="text-center w-24">Status</TableHead>
-                  <TableHead className="w-28" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {contacts.map((contact) => {
-                  const isSent = sentContacts.has(contact.id)
-                  return (
-                    <TableRow
-                      key={contact.id}
-                      className={isSent ? 'opacity-60' : ''}
-                    >
-                      <TableCell className="font-mono text-sm">
-                        {contact.email}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {contact.name || '—'}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {contact.company || '—'}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <EmailJobStatusBadge
-                          status={isSent ? 'sent' : 'pending'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant={isSent ? 'ghost' : 'default'}
-                          onClick={() => handleSendOne(contact.id)}
-                          disabled={autoScoutRunning}
-                          className={
-                            isSent
-                              ? 'text-xs'
-                              : 'text-xs bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white'
-                          }
-                          id={`send-${contact.id}`}
-                        >
-                          {isSent ? (
-                            <>
-                              <ExternalLink className="mr-1 h-3 w-3" />
-                              Resend
-                            </>
-                          ) : (
-                            <>
-                              <Send className="mr-1 h-3 w-3" />
-                              Send
-                            </>
-                          )}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
-          {contacts.length === 0 && (
-            <p className="text-center text-muted-foreground py-8 text-sm">
-              No valid contacts in this campaign&apos;s list
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Floating Status Bar for Auto Scout */}
-      {autoScoutRunning && (
-        <div className="fixed bottom-0 left-0 right-0 p-5 bg-[#020617]/95 backdrop-blur-2xl border-t border-white/10 z-[1000] animate-in slide-in-from-bottom duration-300 shadow-[0_-30px_60px_-15px_rgba(0,0,0,0.6)]">
-           <div className="max-w-2xl mx-auto space-y-4 text-white">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
-                      {countdown > 0 ? 'Preparing Next' : 'Auto Scout Running'} 
-                    </p>
-                    <span className="text-slate-500 font-black text-[10px]">({sentContacts.size} / {campaign.total_emails})</span>
-                  </div>
-                  <p className="text-sm font-bold truncate">
-                    {currentContactEmail || 'Processing...'}
-                  </p>
-                </div>
-                <Button variant="destructive" size="sm" onClick={stopAutoScout} className="rounded-xl h-12 font-black px-5 shadow-lg shadow-red-500/20">
-                  <Square className="mr-2 h-4 w-4 fill-white" /> STOP
-                </Button>
-              </div>
-              
-              <div className="space-y-1">
-                <div className="flex justify-between text-[9px] font-black uppercase text-slate-500">
-                  <span>Batch Progress</span>
-                  <span>{autoScoutProgress}%</span>
-                </div>
-                <Progress value={autoScoutProgress} className="h-2 rounded-full bg-white/10" />
-              </div>
-              
-              {countdown > 0 && (
-                <Button
-                  onClick={() => {
-                    if (nextTriggerRef.current) nextTriggerRef.current()
-                  }}
-                  className="w-full h-14 text-lg font-black rounded-2xl bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-600/30 text-white animate-pulse"
-                >
-                  <Play className="mr-2 h-5 w-5 fill-white" />
-                  SEND NEXT IN {countdown}...
-                </Button>
-              )}
-           </div>
-        </div>
-      )}
     </div>
   )
 }
