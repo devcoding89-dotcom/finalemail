@@ -139,13 +139,10 @@ export default function QuickSendPage() {
     setCurrentIndex(index)
     
     // Attempt to open the mailto link
-    // Note: We use window.open for better handling in some browsers
     const mailtoUrl = getMailto(entry.email)
     const popup = window.open(mailtoUrl, '_blank')
     
     // On some devices, window.open returns null for mailto.
-    // If it's a direct user click (first one), we assume it worked.
-    // For subsequent ones in the loop, we check for blocks.
     if (currentBatchCount > 0 && (!popup || popup.closed || typeof popup.closed === 'undefined')) {
       toast.error('Popup blocked!', {
         description: 'Your browser blocked the next email. Please allow popups for this site.',
@@ -187,7 +184,7 @@ export default function QuickSendPage() {
           setCurrentIndex(-1)
           toast.success('All pending emails in list sent!')
         }
-      }, 4000) // 4 second delay to allow user to see/interact with mail app
+      }, 4000) // 4 second delay
     }
   }
 
@@ -218,12 +215,12 @@ export default function QuickSendPage() {
         )}
       </div>
 
-      {/* Step 1: Recipients */}
+      {/* Step 1: Recipients & Settings */}
       <Card className="border-slate-200 dark:border-slate-800">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold flex items-center gap-2">
             <Users className="h-4 w-4 text-indigo-500" />
-            1. Recipients
+            1. Recipients & Amount
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -243,28 +240,46 @@ export default function QuickSendPage() {
           </Button>
 
           {emails.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-2">
-              {emails.map((entry) => (
-                <Badge
-                  key={entry.email}
-                  variant="secondary"
-                  className={cn(
-                    "pl-2 pr-1 py-1 rounded-lg text-[11px] gap-1.5 border transition-colors",
-                    entry.status === 'sent' 
-                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
-                      : "bg-slate-100 dark:bg-slate-800 border-transparent"
-                  )}
-                >
-                  {entry.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
-                  {entry.email}
-                  {entry.status === 'pending' && (
-                    <button onClick={() => removeEmail(entry.email)} className="hover:text-red-500">
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </Badge>
-              ))}
-            </div>
+             <div className="space-y-3 pt-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {emails.map((entry) => (
+                    <Badge
+                      key={entry.email}
+                      variant="secondary"
+                      className={cn(
+                        "pl-2 pr-1 py-1 rounded-lg text-[11px] gap-1.5 border transition-colors",
+                        entry.status === 'sent' 
+                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
+                          : "bg-slate-100 dark:bg-slate-800 border-transparent"
+                      )}
+                    >
+                      {entry.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
+                      {entry.email}
+                      {entry.status === 'pending' && (
+                        <button onClick={() => removeEmail(entry.email)} className="hover:text-red-500">
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </Badge>
+                  ))}
+                </div>
+
+                <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 space-y-2">
+                   <Label htmlFor="batch-limit" className="text-xs font-bold uppercase text-indigo-600 flex justify-between">
+                     <span>Choose Amount to Auto-Send</span>
+                     <span>{batchLimit} emails</span>
+                   </Label>
+                   <Input 
+                     id="batch-limit"
+                     type="number"
+                     value={batchLimit}
+                     onChange={(e) => setBatchLimit(e.target.value)}
+                     className="h-10 rounded-lg bg-white dark:bg-slate-950 font-bold text-indigo-600"
+                     min="1"
+                     max={pendingCount}
+                   />
+                </div>
+             </div>
           )}
         </CardContent>
       </Card>
@@ -299,52 +314,24 @@ export default function QuickSendPage() {
         </CardContent>
       </Card>
 
-      {/* Step 3: Configuration & Start */}
-      <Card className="border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/10">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold flex items-center gap-2">
-            <Settings2 className="h-4 w-4 text-indigo-500" />
-            3. Setup & Send
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-           <div className="space-y-2">
-              <Label htmlFor="batch-limit" className="text-xs font-bold uppercase text-slate-500 ml-1 flex justify-between">
-                <span>Amount to Send</span>
-                <span className="text-indigo-600 font-bold">{batchLimit} emails</span>
-              </Label>
-              <Input 
-                id="batch-limit"
-                type="number"
-                value={batchLimit}
-                onChange={(e) => setBatchLimit(e.target.value)}
-                className="h-11 rounded-xl bg-white dark:bg-slate-950 font-medium"
-                min="1"
-                max={pendingCount}
-              />
-              <p className="text-[10px] text-slate-400 ml-1">
-                Number of emails to send in this automatic sequence.
-              </p>
-           </div>
-
-           <Button
-              onClick={startBatch}
-              disabled={pendingCount === 0 || !subject.trim() || activeBatch}
-              className="w-full h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-xl shadow-indigo-500/20 transition-all active:scale-95"
-            >
-              <Zap className="mr-2 h-5 w-5" />
-              {activeBatch ? 'Sending...' : 'Start Auto-Send Now'}
-            </Button>
-            
-            <p className="text-[11px] text-center text-slate-500 italic">
-               Note: This will open your mail app for each email.
-            </p>
-        </CardContent>
-      </Card>
+      {/* Step 3: Start Sending */}
+      <div className="pt-2">
+         <Button
+            onClick={startBatch}
+            disabled={pendingCount === 0 || !subject.trim() || activeBatch}
+            className="w-full h-16 text-xl font-bold rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-xl shadow-indigo-500/30 transition-all active:scale-95"
+          >
+            <Zap className="mr-2 h-6 w-6" />
+            {activeBatch ? 'Sending...' : 'Start Auto-Send Now'}
+          </Button>
+          <p className="text-[11px] text-center text-slate-500 italic mt-3">
+             Tip: This will open your mail app for each email automatically.
+          </p>
+      </div>
 
       {/* Active Session Status (Floating Footer) */}
       {activeBatch && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 z-50 animate-in slide-in-from-bottom duration-300 shadow-2xl">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 z-[100] animate-in slide-in-from-bottom duration-300 shadow-2xl">
            <div className="max-w-2xl mx-auto space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1">
@@ -377,12 +364,6 @@ export default function QuickSendPage() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               )}
-              
-              <p className="text-[10px] text-center text-slate-400 font-medium">
-                {isAutoSending 
-                  ? "Mail app opening... next one in 4s. Don't close this tab." 
-                  : "Sequence paused. Click Resume to continue."}
-              </p>
            </div>
         </div>
       )}

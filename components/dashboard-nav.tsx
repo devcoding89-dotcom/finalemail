@@ -84,9 +84,9 @@ export function MobileNav() {
   return (
     <>
       <Button
-        variant="ghost"
+        variant="default"
         size="icon"
-        className="md:hidden h-10 w-10 text-indigo-600 dark:text-white hover:bg-indigo-50 dark:hover:bg-slate-800 relative z-[60]"
+        className="md:hidden h-11 w-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 relative z-[70] rounded-xl"
         onClick={() => setOpen(!open)}
         id="mobile-menu-btn"
       >
@@ -96,28 +96,25 @@ export function MobileNav() {
       {/* Mobile drawer */}
       <div 
         className={cn(
-          "fixed inset-0 z-[100] md:hidden transition-all duration-500 ease-in-out",
-          open ? "visible" : "invisible delay-300"
+          "fixed inset-0 z-[65] md:hidden",
+          open ? "block" : "hidden"
         )}
       >
         {/* Dark backdrop */}
         <div
-          className={cn(
-            "absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-500 ease-in-out",
-            open ? "opacity-100" : "opacity-0"
-          )}
+          className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity"
           onClick={() => setOpen(false)}
         />
 
         {/* Slide-in panel */}
         <div
           className={cn(
-            "absolute left-0 top-0 h-full w-[280px] bg-slate-900 border-r border-slate-800 shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] flex flex-col",
+            "absolute left-0 top-0 h-full w-[280px] bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col transition-transform duration-300",
             open ? "translate-x-0" : "-translate-x-full"
           )}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-5 border-b border-slate-800/60">
+          <div className="flex items-center p-6 border-b border-slate-800/60">
             <div className="flex items-center gap-1.5 font-bold text-xl">
               <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
                 Email
@@ -127,8 +124,8 @@ export function MobileNav() {
           </div>
 
           {/* Nav links */}
-          <nav className="p-4 space-y-1.5 flex-1 overflow-y-auto">
-            {navItems.map((item, index) => {
+          <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
+            {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== '/dashboard' && pathname.startsWith(item.href))
@@ -138,15 +135,11 @@ export function MobileNav() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  style={{
-                    transitionDelay: open ? `${100 + index * 50}ms` : '0ms'
-                  }}
                   className={cn(
-                    'flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium transition-all duration-300 transform',
-                    open ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0',
+                    'flex items-center gap-3 rounded-xl px-4 py-4 text-base font-bold transition-all',
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                      : 'text-white/60 hover:bg-white/10 hover:text-white'
+                      ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20 scale-[1.02]'
+                      : 'text-white/70 hover:bg-white/10 hover:text-white'
                   )}
                 >
                   <item.icon className="h-5 w-5" />
@@ -157,9 +150,9 @@ export function MobileNav() {
           </nav>
 
           {/* Credit */}
-          <div className="p-6 border-t border-slate-800/60">
-            <p className="text-[10px] text-slate-400 text-center">
-              Created by <span className="text-indigo-400 font-semibold tracking-wider">Cyber AK</span>
+          <div className="p-6 border-t border-slate-800/60 text-center">
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+              Created by <span className="text-indigo-500">Cyber AK</span>
             </p>
           </div>
         </div>
