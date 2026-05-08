@@ -48,9 +48,9 @@ export default function LoginPage() {
       <CardHeader className="text-center">
         <div className="mx-auto mb-4 flex items-center gap-2 text-2xl font-bold">
           <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-            Outreach
+            Email
           </span>
-          <span className="text-white">Pro</span>
+          <span className="text-white">Send</span>
         </div>
         <CardTitle className="text-white text-xl">Welcome back</CardTitle>
         <CardDescription className="text-white/60">

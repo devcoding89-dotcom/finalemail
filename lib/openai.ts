@@ -1,8 +1,12 @@
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return _openai
+}
 
 interface ExtractedInfo {
   email: string
@@ -43,7 +47,7 @@ export async function extractContactInfo(
 async function extractBatch(emails: string[]): Promise<ExtractedInfo[]> {
   const emailList = emails.join('\n')
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: 'gpt-4o-mini',
     temperature: 0,
     messages: [

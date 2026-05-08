@@ -61,7 +61,7 @@ export function UserNav({
             <p className="text-sm font-medium leading-none">{user.email}</p>
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground leading-none">
-                {user.user_metadata?.full_name || 'OutreachPro User'}
+                {user.user_metadata?.full_name || 'EmailSend User'}
               </p>
               <VerificationBadge verified={emailVerified} />
             </div>

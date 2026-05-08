@@ -108,9 +108,9 @@ export default function SubscribePage() {
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 text-3xl font-bold">
             <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-              Outreach
+              Email
             </span>
-            <span className="text-white">Pro</span>
+            <span className="text-white">Send</span>
           </div>
           <p className="text-white/50 text-sm">
             Subscribe to unlock your outreach power

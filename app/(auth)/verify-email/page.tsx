@@ -18,9 +18,9 @@ export default function VerifyEmailPage() {
         </div>
         <div className="mx-auto mb-2 flex items-center gap-2 text-2xl font-bold">
           <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-            Outreach
+            Email
           </span>
-          <span className="text-white">Pro</span>
+          <span className="text-white">Send</span>
         </div>
         <CardTitle className="text-white text-xl">Check your email</CardTitle>
         <CardDescription className="text-white/60">

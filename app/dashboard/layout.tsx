@@ -28,9 +28,9 @@ export default async function DashboardLayout({
         <div className="flex h-16 items-center px-4 md:px-8">
           <div className="flex items-center gap-1.5 font-bold text-xl">
             <span className="bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent">
-              Outreach
+              Email
             </span>
-            <span>Pro</span>
+            <span>Send</span>
           </div>
           <div className="ml-auto flex items-center gap-4">
             <UserNav user={user} emailVerified={emailVerified} />

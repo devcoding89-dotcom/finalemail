@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'OutreachPro — Scale Your Email Outreach',
+  title: 'EmailSend — Scale Your Email Outreach',
   description:
     'Upload contacts, personalize with AI, and send bulk emails at scale.',
 }
