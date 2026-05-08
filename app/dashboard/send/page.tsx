@@ -28,6 +28,7 @@ import {
   RefreshCw,
   ArrowRight,
   Settings2,
+  Play,
 } from 'lucide-react'
 
 interface EmailEntry {
@@ -46,21 +47,42 @@ export default function QuickSendPage() {
   const [batchLimit, setBatchLimit] = useState('10')
   const [isAutoSending, setIsAutoSending] = useState(false)
   const [sentInBatch, setSentInBatch] = useState(0)
+  const [countdown, setCountdown] = useState(0)
   
-  // Refs for stable values across timeouts
+  // Refs for stable values across timeouts and event listeners
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const isAutoSendingRef = useRef(false)
   const emailsRef = useRef<EmailEntry[]>([])
+  const currentIndexRef = useRef(-1)
+  const sentInBatchRef = useRef(0)
+  const batchLimitRef = useRef(10)
 
-  // Keep emailsRef in sync
+  // Keep refs in sync
   useEffect(() => {
     emailsRef.current = emails
-  }, [emails])
+    currentIndexRef.current = currentIndex
+    sentInBatchRef.current = sentInBatch
+    batchLimitRef.current = parseInt(batchLimit) || 10
+  }, [emails, currentIndex, sentInBatch, batchLimit])
 
-  // Stop auto-sending on unmount
+  // Smart Focus Trigger: When user returns to the tab, if we're waiting, trigger next.
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isAutoSendingRef.current && countdown > 0) {
+        console.log('[QuickSend] Tab focused, triggering next email immediately...')
+        triggerNextNow()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [countdown])
+
+  // Stop everything on unmount
   useEffect(() => {
     return () => {
-      if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current)
+      stopBatch()
     }
   }, [])
 
@@ -114,43 +136,35 @@ export default function QuickSendPage() {
     setSentInBatch(0)
     
     // Start the first one immediately
-    sendNext(pendingIndex, 0, limit)
+    openEmail(pendingIndex, 0, limit)
   }
 
-  const sendNext = (index: number, currentBatchCount: number, limit: number) => {
+  const openEmail = (index: number, currentBatchCount: number, limit: number) => {
     // Check if we should stop
     if (index >= emailsRef.current.length || currentBatchCount >= limit || !isAutoSendingRef.current) {
-      setIsAutoSending(false)
-      isAutoSendingRef.current = false
-      setActiveBatch(false)
-      setCurrentIndex(-1)
+      stopBatch()
       if (currentBatchCount > 0) {
-        toast.success(currentBatchCount >= limit ? `Batch of ${currentBatchCount} complete!` : 'Auto-send stopped.')
+        toast.success(`Batch of ${currentBatchCount} complete!`)
       }
       return
     }
 
     const entry = emailsRef.current[index]
     if (entry.status !== 'pending') {
-      sendNext(index + 1, currentBatchCount, limit)
+      const nextPending = emailsRef.current.findIndex((e, i) => i > index && e.status === 'pending')
+      if (nextPending !== -1) {
+        openEmail(nextPending, currentBatchCount, limit)
+      } else {
+        stopBatch()
+      }
       return
     }
 
     setCurrentIndex(index)
     
     const mailtoUrl = getMailto(entry.email)
-    const popup = window.open(mailtoUrl, '_blank')
+    window.location.href = mailtoUrl // Using location.href is more reliable on mobile for mailto
     
-    if (currentBatchCount > 0 && (!popup || popup.closed || typeof popup.closed === 'undefined')) {
-      toast.error('Popup blocked!', {
-        description: 'Your browser blocked the next email. Please allow popups for this site.',
-        duration: 5000,
-      })
-      setIsAutoSending(false)
-      isAutoSendingRef.current = false
-      return
-    }
-
     // Mark as sent in state
     setEmails((prev) =>
       prev.map((e, i) => (i === index ? { ...e, status: 'sent' } : e))
@@ -168,29 +182,56 @@ export default function QuickSendPage() {
     setProgress(Math.round((totalSent / emailsRef.current.length) * 100))
     setSentInBatch(currentBatchCount + 1)
 
-    // Trigger next after delay if auto-sending
+    // Start countdown for next
     if (isAutoSendingRef.current && (currentBatchCount + 1) < limit) {
-      autoSendTimerRef.current = setTimeout(() => {
-        const nextPending = emailsRef.current.findIndex((e, i) => i > index && e.status === 'pending')
-        if (nextPending !== -1) {
-          sendNext(nextPending, currentBatchCount + 1, limit)
-        } else {
-          setIsAutoSending(false)
-          isAutoSendingRef.current = false
-          setActiveBatch(false)
-          setCurrentIndex(-1)
-          toast.success('All pending emails in list sent!')
+      startCountdown(index, currentBatchCount + 1, limit)
+    } else if ((currentBatchCount + 1) >= limit) {
+      setTimeout(() => stopBatch(), 500)
+    }
+  }
+
+  const startCountdown = (lastIndex: number, nextBatchCount: number, limit: number) => {
+    setCountdown(3) // 3 second countdown
+    
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+    
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+          const nextPending = emailsRef.current.findIndex((e, i) => i > lastIndex && e.status === 'pending')
+          if (nextPending !== -1) {
+            openEmail(nextPending, nextBatchCount, limit)
+          } else {
+            stopBatch()
+          }
+          return 0
         }
-      }, 4000)
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  const triggerNextNow = () => {
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+    setCountdown(0)
+    
+    const nextPending = emailsRef.current.findIndex((e, i) => i > currentIndexRef.current && e.status === 'pending')
+    if (nextPending !== -1) {
+      openEmail(nextPending, sentInBatchRef.current, batchLimitRef.current)
+    } else {
+      stopBatch()
     }
   }
 
   const stopBatch = () => {
     if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current)
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
     setIsAutoSending(false)
     isAutoSendingRef.current = false
     setActiveBatch(false)
     setCurrentIndex(-1)
+    setCountdown(0)
   }
 
   const pendingCount = emails.filter((e) => e.status === 'pending').length
@@ -198,7 +239,7 @@ export default function QuickSendPage() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto pb-32 md:pb-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Quick Send</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -213,24 +254,24 @@ export default function QuickSendPage() {
       </div>
 
       {/* Step 1: Recipients */}
-      <Card className="border-slate-200 dark:border-slate-800">
-        <CardHeader className="pb-3">
+      <Card className="border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
+        <CardHeader className="pb-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
           <CardTitle className="text-base font-bold flex items-center gap-2 text-indigo-600">
             <Users className="h-4 w-4" />
             Step 1: Add Recipients
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-4">
           <textarea
             value={emailInput}
             onChange={(e) => setEmailInput(e.target.value)}
             placeholder={"Paste emails here...\njohn@company.com\njane@agency.ng"}
-            className="w-full min-h-[100px] rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+            className="w-full min-h-[120px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner"
           />
           <Button
             onClick={addEmails}
             disabled={!emailInput.trim()}
-            className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 h-11 font-bold"
+            className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 h-12 font-bold shadow-lg shadow-indigo-500/20"
           >
             <Plus className="mr-2 h-4 w-4" />
             Add to List
@@ -246,7 +287,7 @@ export default function QuickSendPage() {
                     "pl-2 pr-1 py-1 rounded-lg text-[11px] gap-1.5 border transition-colors",
                     entry.status === 'sent' 
                       ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
-                      : "bg-slate-100 dark:bg-slate-800 border-transparent"
+                      : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                   )}
                 >
                   {entry.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
@@ -263,8 +304,8 @@ export default function QuickSendPage() {
         </CardContent>
       </Card>
 
-      {/* Step 2: Configuration (Amount to Send) */}
-      <Card className="border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/10">
+      {/* Step 2: Configuration */}
+      <Card className="border-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-950/10 rounded-2xl">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold flex items-center gap-2 text-indigo-600">
             <Settings2 className="h-4 w-4" />
@@ -282,33 +323,32 @@ export default function QuickSendPage() {
                 type="number"
                 value={batchLimit}
                 onChange={(e) => setBatchLimit(e.target.value)}
-                className="h-12 rounded-xl bg-white dark:bg-slate-950 font-black text-xl text-indigo-600 shadow-inner"
+                className="h-14 rounded-xl bg-white dark:bg-slate-950 font-black text-2xl text-center text-indigo-600 shadow-lg border-indigo-200 dark:border-indigo-900"
                 min="1"
-                max={Math.max(pendingCount, 1)}
               />
-              <p className="text-[10px] text-slate-400 ml-1 font-medium italic">
-                Choose how many emails to send automatically in this batch.
+              <p className="text-[10px] text-center text-slate-400 font-bold italic">
+                Choose the number of emails to trigger in this automatic session.
               </p>
            </div>
         </CardContent>
       </Card>
 
       {/* Step 3: Message */}
-      <Card className="border-slate-200 dark:border-slate-800">
-        <CardHeader className="pb-3">
+      <Card className="border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl">
+        <CardHeader className="pb-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
           <CardTitle className="text-base font-bold flex items-center gap-2 text-indigo-600">
             <Mail className="h-4 w-4" />
             Step 3: Write Message
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-4">
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Subject</Label>
             <Input
               placeholder="e.g. Quick Question"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="rounded-xl h-11"
+              className="rounded-xl h-11 bg-white dark:bg-slate-950"
             />
           </div>
           <div className="space-y-1.5">
@@ -317,60 +357,81 @@ export default function QuickSendPage() {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder={"Hi there,\n\nI wanted to connect..."}
-              className="w-full min-h-[150px] rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+              className="w-full min-h-[160px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner"
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Start Button */}
-      <div className="pt-2">
+      <div className="pt-2 px-2">
          <Button
             onClick={startBatch}
             disabled={pendingCount === 0 || !subject.trim() || activeBatch}
-            className="w-full h-16 text-xl font-black rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-2xl shadow-indigo-500/40 transition-all active:scale-95"
+            className="w-full h-20 text-2xl font-black rounded-3xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-2xl shadow-indigo-500/30 transition-all active:scale-95 flex flex-col items-center justify-center gap-1"
           >
-            <Zap className="mr-2 h-6 w-6 fill-white" />
-            {activeBatch ? 'AUTO-SENDING...' : 'START AUTO-SEND NOW'}
+            <div className="flex items-center gap-2">
+               <Zap className="h-7 w-7 fill-white" />
+               {activeBatch ? 'SESSION ACTIVE' : 'START AUTO-SEND'}
+            </div>
+            {!activeBatch && <span className="text-[10px] opacity-70 font-bold uppercase tracking-widest">Process {Math.min(pendingCount, parseInt(batchLimit))} Emails</span>}
           </Button>
-          <p className="text-[11px] text-center text-slate-500 font-bold italic mt-3">
-             IMPORTANT: Must allow popups in your browser settings!
+          <p className="text-[10px] text-center text-slate-400 font-bold italic mt-4 px-4 leading-relaxed">
+             NOTE: Your browser will switch to your email app. Just send the email and return here for the next one.
           </p>
       </div>
 
       {/* Active Session Status (Floating Footer) */}
       {activeBatch && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#020617]/95 backdrop-blur-xl border-t border-white/10 z-[100] animate-in slide-in-from-bottom duration-300 shadow-[0_-20px_50px_-15px_rgba(0,0,0,0.5)]">
+        <div className="fixed bottom-0 left-0 right-0 p-5 bg-[#020617]/95 backdrop-blur-2xl border-t border-white/10 z-[1000] animate-in slide-in-from-bottom duration-300 shadow-[0_-30px_60px_-15px_rgba(0,0,0,0.6)]">
            <div className="max-w-2xl mx-auto space-y-4 text-white">
               <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <p className="text-xs font-black text-indigo-400 uppercase mb-0.5 flex items-center gap-2">
-                    <RefreshCw className={cn("h-3 w-3", isAutoSending && "animate-spin")} />
-                    {isAutoSending ? 'Auto-Sending' : 'Paused'} 
-                    <span className="text-slate-500 font-bold ml-2">({sentInBatch} / {batchLimit})</span>
-                  </p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                      {countdown > 0 ? 'Preparing Next' : 'Session Running'} 
+                    </p>
+                    <span className="text-slate-500 font-black text-[10px]">({sentInBatch} / {batchLimit})</span>
+                  </div>
                   <p className="text-sm font-bold truncate">
-                    {emails[currentIndex]?.email}
+                    {emails[currentIndex]?.email || 'Processing...'}
                   </p>
                 </div>
-                <Button variant="destructive" size="sm" onClick={stopBatch} className="rounded-lg h-10 font-black px-4">
+                <Button variant="destructive" size="sm" onClick={stopBatch} className="rounded-xl h-12 font-black px-5 shadow-lg shadow-red-500/20">
                   <Square className="mr-2 h-4 w-4 fill-white" /> STOP
                 </Button>
               </div>
               
-              <Progress value={progress} className="h-2.5 rounded-full bg-white/10" />
+              <div className="space-y-1">
+                <div className="flex justify-between text-[9px] font-black uppercase text-slate-500">
+                  <span>Progress</span>
+                  <span>{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-2 rounded-full bg-white/10" />
+              </div>
               
-              {!isAutoSending && (
+              {countdown > 0 && (
+                <Button
+                  onClick={triggerNextNow}
+                  className="w-full h-14 text-lg font-black rounded-2xl bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-600/30 text-white animate-pulse"
+                >
+                  <Play className="mr-2 h-5 w-5 fill-white" />
+                  SEND NEXT IN {countdown}...
+                </Button>
+              )}
+
+              {!isAutoSending && !countdown && (
                 <Button
                   onClick={() => {
                     isAutoSendingRef.current = true
                     setIsAutoSending(true)
-                    sendNext(currentIndex + 1, sentInBatch, parseInt(batchLimit))
+                    openEmail(currentIndex + 1, sentInBatch, parseInt(batchLimit))
                   }}
-                  className="w-full h-12 text-md font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 shadow-lg text-white"
+                  className="w-full h-14 text-lg font-black rounded-2xl bg-emerald-600 hover:bg-emerald-500 shadow-xl shadow-emerald-600/30 text-white"
                 >
-                  Resume Auto-Send
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  RESUME SESSION
+                  <ArrowRight className="ml-2 h-6 w-6" />
                 </Button>
               )}
            </div>
