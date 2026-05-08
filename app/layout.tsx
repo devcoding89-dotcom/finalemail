@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { PageTransition } from '@/components/page-transition'
 import { MobileInstallBanner } from '@/components/mobile-install-banner'
 import { PwaProvider } from '@/components/pwa-provider'
+import { FeatureAnnouncementModal } from '@/components/feature-announcement-modal'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -46,6 +47,7 @@ export default function RootLayout({
           {children}
           <Toaster position="top-center" richColors />
           <MobileInstallBanner />
+          <FeatureAnnouncementModal />
         </PwaProvider>
       </body>
     </html>
