@@ -52,7 +52,7 @@ export async function initializePayment(
     const response = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${secretKey}`,
+        Authorization: `Bearer ${secretKey.trim()}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -107,7 +107,7 @@ export async function verifyPayment(
       {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${secretKey}`,
+          Authorization: `Bearer ${secretKey.trim()}`,
         },
       }
     )
@@ -146,7 +146,7 @@ export function validateWebhookSignature(
 
     const crypto = require('crypto') as typeof import('crypto')
     const hash = crypto
-      .createHmac('sha512', secretKey)
+      .createHmac('sha512', secretKey.trim())
       .update(body)
       .digest('hex')
 

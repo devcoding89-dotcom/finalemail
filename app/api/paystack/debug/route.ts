@@ -8,8 +8,10 @@ export async function GET() {
     env: {
       hasSecretKey: !!secretKey,
       secretKeyPrefix: secretKey ? secretKey.substring(0, 7) + '...' : 'MISSING',
+      secretKeyHasSpaces: secretKey ? secretKey !== secretKey.trim() : false,
       hasPublicKey: !!publicKey,
       publicKeyPrefix: publicKey ? publicKey.substring(0, 7) + '...' : 'MISSING',
+      publicKeyHasSpaces: publicKey ? publicKey !== publicKey.trim() : false,
     },
     connectivity: 'Checking...',
     timestamp: new Date().toISOString()
