@@ -96,14 +96,14 @@ export function MobileNav() {
       {/* Mobile drawer */}
       <div 
         className={cn(
-          "fixed inset-0 z-[100] md:hidden transition-all duration-300",
-          open ? "visible" : "invisible"
+          "fixed inset-0 z-[100] md:hidden transition-all duration-500 ease-in-out",
+          open ? "visible" : "invisible delay-300"
         )}
       >
         {/* Dark backdrop */}
         <div
           className={cn(
-            "absolute inset-0 bg-black/80 transition-opacity duration-300",
+            "absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-500 ease-in-out",
             open ? "opacity-100" : "opacity-0"
           )}
           onClick={() => setOpen(false)}
@@ -112,23 +112,23 @@ export function MobileNav() {
         {/* Slide-in panel */}
         <div
           className={cn(
-            "absolute left-0 top-0 h-full w-[280px] bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 shadow-2xl transition-transform duration-300 flex flex-col",
+            "absolute left-0 top-0 h-full w-[280px] bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] flex flex-col",
             open ? "translate-x-0" : "-translate-x-full"
           )}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800/60">
             <div className="flex items-center gap-1.5 font-bold text-xl">
-              <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent">
                 Email
               </span>
-              <span className="text-white">Send</span>
+              <span className="text-slate-900 dark:text-white">Send</span>
             </div>
           </div>
 
           {/* Nav links */}
-          <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
-            {navItems.map((item) => {
+          <nav className="p-4 space-y-1.5 flex-1 overflow-y-auto">
+            {navItems.map((item, index) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== '/dashboard' && pathname.startsWith(item.href))
@@ -138,11 +138,15 @@ export function MobileNav() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
+                  style={{
+                    transitionDelay: open ? `${100 + index * 50}ms` : '0ms'
+                  }}
                   className={cn(
-                    'flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium transition-all',
+                    'flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium transition-all duration-300 transform',
+                    open ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0',
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                      : 'text-white/60 active:bg-white/10 active:text-white'
+                      ? 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
                   )}
                 >
                   <item.icon className="h-5 w-5" />
@@ -153,9 +157,9 @@ export function MobileNav() {
           </nav>
 
           {/* Credit */}
-          <div className="p-6 border-t border-white/10">
+          <div className="p-6 border-t border-slate-100 dark:border-slate-800/60">
             <p className="text-[10px] text-slate-500 text-center">
-              Created by <span className="text-indigo-400/70 font-semibold tracking-wider">Cyber AK</span>
+              Created by <span className="text-indigo-500 font-semibold tracking-wider">Cyber AK</span>
             </p>
           </div>
         </div>
