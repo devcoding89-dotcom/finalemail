@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,6 +24,7 @@ import {
   Clock,
   Square,
   RefreshCw,
+  ArrowRight,
 } from 'lucide-react'
 
 interface EmailEntry {
@@ -36,9 +37,9 @@ export default function QuickSendPage() {
   const [emails, setEmails] = useState<EmailEntry[]>([])
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
-  const [autoSending, setAutoSending] = useState(false)
+  const [activeBatch, setActiveBatch] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(-1)
   const [progress, setProgress] = useState(0)
-  const abortRef = useRef(false)
 
   // Add emails from input
   const addEmails = () => {
@@ -65,162 +66,132 @@ export default function QuickSendPage() {
     setEmails((prev) => prev.filter((e) => e.email !== email))
   }
 
-  // Send single email — opens mailto
-  const sendOne = (entry: EmailEntry) => {
+  // Generate mailto link
+  const getMailto = (email: string) => {
+    const personalizedBody = body.replace(/\{email\}/gi, email)
+    return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(personalizedBody)}`
+  }
+
+  // Send single email
+  const sendOne = (email: string) => {
     if (!subject.trim()) {
       toast.error('Please enter a subject')
       return
     }
-
-    const personalizedBody = body
-      .replace(/\{email\}/gi, entry.email)
-
-    const mailtoLink = `mailto:${encodeURIComponent(entry.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(personalizedBody)}`
-
-    // Open email client
-    window.open(mailtoLink, '_blank')
-
-    // Mark as sent
+    window.open(getMailto(email), '_blank')
     setEmails((prev) =>
-      prev.map((e) =>
-        e.email === entry.email ? { ...e, status: 'sent' } : e
-      )
+      prev.map((e) => (e.email === email ? { ...e, status: 'sent' } : e))
     )
-
-    toast.success(`Email ready for ${entry.email}`)
   }
 
-  // Auto Send — loops through all pending emails
-  const startAutoSend = async () => {
+  // BATCH SEND LOGIC (Phone Friendly)
+  const startBatch = () => {
     if (!subject.trim()) {
       toast.error('Please enter a subject first')
       return
     }
+    const pending = emails.findIndex(e => e.status === 'pending')
+    if (pending === -1) {
+      toast.info('No pending emails!')
+      return
+    }
+    setActiveBatch(true)
+    sendNext(pending)
+  }
 
-    const pending = emails.filter((e) => e.status === 'pending')
-    if (pending.length === 0) {
-      toast.info('All emails already sent!')
+  const sendNext = (index: number) => {
+    if (index >= emails.length) {
+      setActiveBatch(false)
+      setCurrentIndex(-1)
+      toast.success('Batch complete!')
       return
     }
 
-    setAutoSending(true)
-    abortRef.current = false
-    setProgress(0)
-
-    for (let i = 0; i < pending.length; i++) {
-      if (abortRef.current) {
-        toast.info(`Stopped. Sent ${i} of ${pending.length}.`)
-        break
-      }
-
-      const entry = pending[i]
-
-      // Mark as sending
-      setEmails((prev) =>
-        prev.map((e) =>
-          e.email === entry.email ? { ...e, status: 'sending' } : e
-        )
-      )
-
-      // Build mailto
-      const personalizedBody = body.replace(/\{email\}/gi, entry.email)
-      const mailtoLink = `mailto:${encodeURIComponent(entry.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(personalizedBody)}`
-
-      window.open(mailtoLink, '_blank')
-
-      // Mark as sent
-      setEmails((prev) =>
-        prev.map((e) =>
-          e.email === entry.email ? { ...e, status: 'sent' } : e
-        )
-      )
-
-      setProgress(Math.round(((i + 1) / pending.length) * 100))
-
-      // Wait 5 seconds between sends
-      if (i < pending.length - 1 && !abortRef.current) {
-        await new Promise((r) => setTimeout(r, 5000))
-      }
+    const entry = emails[index]
+    if (entry.status !== 'pending') {
+      sendNext(index + 1)
+      return
     }
 
-    setAutoSending(false)
-    if (!abortRef.current) {
-      toast.success('Auto Send complete! Check your email client.')
-    }
+    setCurrentIndex(index)
+    window.open(getMailto(entry.email), '_blank')
+    
+    // Mark as sent
+    setEmails((prev) =>
+      prev.map((e, i) => (i === index ? { ...e, status: 'sent' } : e))
+    )
+
+    // Update progress
+    const sentCount = emails.filter(e => e.status === 'sent').length + 1
+    setProgress(Math.round((sentCount / emails.length) * 100))
   }
 
-  const stopAutoSend = () => {
-    abortRef.current = true
+  const stopBatch = () => {
+    setActiveBatch(false)
+    setCurrentIndex(-1)
   }
 
   const sentCount = emails.filter((e) => e.status === 'sent').length
   const pendingCount = emails.filter((e) => e.status === 'pending').length
 
   return (
-    <div className="space-y-4 md:space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6 max-w-2xl mx-auto pb-20 md:pb-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Quick Send</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Paste emails, write your message, hit send
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Quick Send</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Bulk email from your phone or PC
+          </p>
+        </div>
+        {emails.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setEmails([])} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+            Clear All
+          </Button>
+        )}
       </div>
 
-      {/* Step 1: Add emails */}
-      <Card>
+      {/* Step 1: Recipients */}
+      <Card className="border-slate-200 dark:border-slate-800">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Mail className="h-4 w-4 text-indigo-500" />
-            1. Add Recipient Emails
+          <CardTitle className="text-base font-bold flex items-center gap-2">
+            <Users className="h-4 w-4 text-indigo-500" />
+            1. Recipients
           </CardTitle>
-          <CardDescription className="text-xs">
-            Paste one email per line, or comma-separated
-          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-2">
-            <textarea
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              placeholder={"john@company.com\njane@agency.ng\nboss@startup.com"}
-              className="flex-1 min-h-[80px] rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-              id="email-paste-input"
-            />
-          </div>
+        <CardContent className="space-y-4">
+          <textarea
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            placeholder={"Paste emails here...\njohn@company.com\njane@agency.ng"}
+            className="w-full min-h-[100px] rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+          />
           <Button
             onClick={addEmails}
             disabled={!emailInput.trim()}
-            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white"
-            id="add-emails-btn"
+            className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 h-11"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Add Emails
+            Add to List
           </Button>
 
-          {/* Email chips */}
           {emails.length > 0 && (
             <div className="flex flex-wrap gap-1.5 pt-2">
               {emails.map((entry) => (
                 <Badge
                   key={entry.email}
-                  variant="outline"
-                  className={`text-xs gap-1 pr-1 ${
-                    entry.status === 'sent'
-                      ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400'
-                      : entry.status === 'sending'
-                        ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/30 animate-pulse'
-                        : 'bg-slate-50 dark:bg-slate-900'
-                  }`}
+                  variant="secondary"
+                  className={cn(
+                    "pl-2 pr-1 py-1 rounded-lg text-[11px] gap-1.5 border transition-colors",
+                    entry.status === 'sent' 
+                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
+                      : "bg-slate-100 dark:bg-slate-800 border-transparent"
+                  )}
                 >
                   {entry.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
-                  {entry.status === 'sending' && <RefreshCw className="h-3 w-3 animate-spin" />}
-                  {entry.status === 'pending' && <Clock className="h-3 w-3 text-muted-foreground" />}
                   {entry.email}
                   {entry.status === 'pending' && (
-                    <button
-                      onClick={() => removeEmail(entry.email)}
-                      className="ml-1 hover:text-red-500 p-0.5"
-                    >
+                    <button onClick={() => removeEmail(entry.email)} className="hover:text-red-500">
                       <X className="h-3 w-3" />
                     </button>
                   )}
@@ -228,116 +199,96 @@ export default function QuickSendPage() {
               ))}
             </div>
           )}
-
-          {emails.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {emails.length} total · {sentCount} sent · {pendingCount} pending
-            </p>
-          )}
         </CardContent>
       </Card>
 
-      {/* Step 2: Write message */}
-      <Card>
+      {/* Step 2: Message */}
+      <Card className="border-slate-200 dark:border-slate-800">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Send className="h-4 w-4 text-indigo-500" />
-            2. Write Your Message
+          <CardTitle className="text-base font-bold flex items-center gap-2">
+            <Mail className="h-4 w-4 text-indigo-500" />
+            2. Message
           </CardTitle>
-          <CardDescription className="text-xs">
-            Use {'{email}'} to insert the recipient&apos;s email
-          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="quick-subject" className="text-xs">Subject</Label>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Subject</Label>
             <Input
-              id="quick-subject"
-              placeholder="e.g. Partnership Opportunity"
+              placeholder="e.g. Quick Question"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
+              className="rounded-xl h-11"
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="quick-body" className="text-xs">Message Body</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Body</Label>
             <textarea
-              id="quick-body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder={"Hi there,\n\nI'd like to discuss a partnership...\n\nBest regards"}
-              className="w-full min-h-[120px] rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              placeholder={"Hi there,\n\nI wanted to connect..."}
+              className="w-full min-h-[150px] rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Step 3: Send */}
-      <Card className="border-indigo-500/20 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 dark:from-indigo-950/20 dark:to-violet-950/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-500" />
-            3. Send Emails
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Click a contact to send one, or use Auto Send for all
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Auto Send controls */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            {!autoSending ? (
+      {/* Step 3: Send (Floating on Mobile) */}
+      <div className={cn(
+        "fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 z-50 md:relative md:bg-transparent md:border-none md:p-0",
+        activeBatch ? "block" : "hidden md:block"
+      )}>
+        <Card className="md:border-indigo-500/20 md:bg-indigo-50/30 dark:md:bg-indigo-950/10">
+          <CardContent className="p-4 md:p-6 space-y-4">
+            {!activeBatch ? (
               <Button
-                onClick={startAutoSend}
+                onClick={startBatch}
                 disabled={pendingCount === 0 || !subject.trim()}
-                className="flex-1 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white"
-                id="auto-send-btn"
+                className="w-full h-12 md:h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-xl shadow-indigo-500/20"
               >
-                <Zap className="mr-2 h-4 w-4" />
-                Auto Send All ({pendingCount} pending)
+                <Zap className="mr-2 h-5 w-5" />
+                Start Auto-Send ({pendingCount})
               </Button>
             ) : (
-              <Button
-                onClick={stopAutoSend}
-                variant="destructive"
-                className="flex-1"
-                id="stop-send-btn"
-              >
-                <Square className="mr-2 h-4 w-4" />
-                Stop Auto Send
-              </Button>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-indigo-600 uppercase mb-1">Sending Batch...</p>
+                    <p className="text-sm font-medium truncate">{emails[currentIndex]?.email}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={stopBatch} className="rounded-lg h-9">
+                    <Square className="mr-2 h-4 w-4" /> Stop
+                  </Button>
+                </div>
+                
+                <Progress value={progress} className="h-2.5 rounded-full" />
+                
+                <Button
+                  onClick={() => sendNext(currentIndex + 1)}
+                  className="w-full h-14 text-lg font-bold rounded-2xl bg-emerald-600 hover:bg-emerald-500 shadow-xl shadow-emerald-500/20 animate-pulse"
+                >
+                  Send Next Email
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+                <p className="text-[11px] text-center text-slate-500 italic">
+                  Browsers block auto-popups. Click the button for each email.
+                </p>
+              </div>
             )}
-          </div>
+          </CardContent>
+        </Card>
+      </div>
 
-          {autoSending && (
-            <div className="space-y-2">
-              <Progress value={progress} className="h-2" />
-              <p className="text-xs text-muted-foreground text-center">
-                Sending {progress}% — don&apos;t close this page
-              </p>
-            </div>
-          )}
-
-          {/* Individual send buttons */}
-          {emails.filter((e) => e.status === 'pending').length > 0 && (
-            <div className="space-y-1.5 pt-2 border-t">
-              <p className="text-xs text-muted-foreground font-medium">Or send individually:</p>
-              {emails
-                .filter((e) => e.status === 'pending')
-                .map((entry) => (
-                  <button
-                    key={entry.email}
-                    onClick={() => sendOne(entry)}
-                    disabled={autoSending}
-                    className="w-full flex items-center justify-between p-2.5 rounded-lg border hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:border-indigo-300 transition-all text-left"
-                  >
-                    <span className="text-sm font-mono truncate">{entry.email}</span>
-                    <Send className="h-3.5 w-3.5 text-indigo-500 shrink-0 ml-2" />
-                  </button>
-                ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Placeholder for floating button on mobile */}
+      {!activeBatch && pendingCount > 0 && (
+        <div className="md:hidden fixed bottom-6 right-6 z-40">
+           <Button
+            onClick={startBatch}
+            className="w-16 h-16 rounded-full bg-indigo-600 shadow-2xl shadow-indigo-500/40 p-0"
+          >
+            <Send className="h-6 w-6" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
