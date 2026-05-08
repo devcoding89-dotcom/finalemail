@@ -27,6 +27,7 @@ import {
   Square,
   RefreshCw,
   ArrowRight,
+  Settings2,
 } from 'lucide-react'
 
 interface EmailEntry {
@@ -198,7 +199,7 @@ export default function QuickSendPage() {
   const pendingCount = emails.filter((e) => e.status === 'pending').length
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto pb-20 md:pb-8">
+    <div className="space-y-6 max-w-2xl mx-auto pb-24 md:pb-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -295,88 +296,83 @@ export default function QuickSendPage() {
         </CardContent>
       </Card>
 
-      {/* Step 3: Send (Floating on Mobile) */}
-      <div className={cn(
-        "fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 z-50 md:relative md:bg-transparent md:border-none md:p-0",
-        activeBatch ? "block" : "hidden md:block"
-      )}>
-        <Card className="md:border-indigo-500/20 md:bg-indigo-50/30 dark:md:bg-indigo-950/10">
-          <CardContent className="p-4 md:p-6 space-y-4">
-            {!activeBatch ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 space-y-1.5">
-                    <Label htmlFor="batch-limit" className="text-[10px] font-bold uppercase text-slate-500 ml-1">Amount to Send</Label>
-                    <Input 
-                      id="batch-limit"
-                      type="number"
-                      value={batchLimit}
-                      onChange={(e) => setBatchLimit(e.target.value)}
-                      className="h-10 rounded-xl"
-                      min="1"
-                      max={pendingCount}
-                    />
-                  </div>
-                  <div className="flex-[2] pt-5">
-                    <Button
-                      onClick={startBatch}
-                      disabled={pendingCount === 0 || !subject.trim()}
-                      className="w-full h-10 text-sm font-bold rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/20"
-                    >
-                      <Zap className="mr-2 h-4 w-4" />
-                      Start Auto-Send
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-[10px] text-center text-slate-400 italic">
-                  Tip: Keep your browser tab open and allow popups.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="text-xs font-bold text-indigo-600 uppercase mb-1">
-                      {isAutoSending ? 'Auto-Sending...' : 'Paused'} ({sentInBatch}/{batchLimit})
-                    </p>
-                    <p className="text-sm font-medium truncate">{emails[currentIndex]?.email}</p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={stopBatch} className="rounded-lg h-9">
-                    <Square className="mr-2 h-4 w-4" /> Stop
-                  </Button>
-                </div>
-                
-                <Progress value={progress} className="h-2.5 rounded-full" />
-                
-                {!isAutoSending && (
-                  <Button
-                    onClick={() => sendNext(currentIndex + 1, sentInBatch, parseInt(batchLimit))}
-                    className="w-full h-14 text-lg font-bold rounded-2xl bg-emerald-600 hover:bg-emerald-500 shadow-xl shadow-emerald-500/20 animate-pulse"
-                  >
-                    Send Next Email
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                )}
-                <p className="text-[11px] text-center text-slate-500 italic">
-                  {isAutoSending 
-                    ? "Next email will open automatically in 3s..." 
-                    : "Browsers block auto-popups. Click to continue."}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Step 3: Configuration & Start */}
+      <Card className="border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/10">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-bold flex items-center gap-2">
+            <Settings2 className="h-4 w-4 text-indigo-500" />
+            3. Setup & Send
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+           <div className="space-y-2">
+              <Label htmlFor="batch-limit" className="text-xs font-bold uppercase text-slate-500 ml-1 flex justify-between">
+                <span>Amount to Send</span>
+                <span className="text-indigo-600">{batchLimit} emails</span>
+              </Label>
+              <Input 
+                id="batch-limit"
+                type="number"
+                value={batchLimit}
+                onChange={(e) => setBatchLimit(e.target.value)}
+                className="h-11 rounded-xl bg-white dark:bg-slate-950"
+                min="1"
+                max={pendingCount}
+              />
+              <p className="text-[10px] text-slate-400 ml-1">
+                How many emails should be sent in this session? (Max: {pendingCount})
+              </p>
+           </div>
 
-      {/* Placeholder for floating button on mobile */}
-      {!activeBatch && pendingCount > 0 && (
-        <div className="md:hidden fixed bottom-6 right-6 z-40">
            <Button
-            onClick={startBatch}
-            className="w-16 h-16 rounded-full bg-indigo-600 shadow-2xl shadow-indigo-500/40 p-0"
-          >
-            <Send className="h-6 w-6" />
-          </Button>
+              onClick={startBatch}
+              disabled={pendingCount === 0 || !subject.trim() || activeBatch}
+              className="w-full h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-xl shadow-indigo-500/20 transition-all active:scale-95"
+            >
+              <Zap className="mr-2 h-5 w-5" />
+              {activeBatch ? 'Auto-Sending...' : `Start Auto-Send (${Math.min(parseInt(batchLimit) || 0, pendingCount)})`}
+            </Button>
+            
+            <p className="text-[11px] text-center text-slate-500 italic">
+               Note: You must allow popups in your browser.
+            </p>
+        </CardContent>
+      </Card>
+
+      {/* Active Session Status (Floating Footer) */}
+      {activeBatch && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 z-50 animate-in slide-in-from-bottom duration-300">
+           <div className="max-w-2xl mx-auto space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-indigo-600 uppercase mb-1">
+                    {isAutoSending ? 'Auto-Sending...' : 'Paused'} ({sentInBatch}/{batchLimit})
+                  </p>
+                  <p className="text-sm font-medium truncate">{emails[currentIndex]?.email}</p>
+                </div>
+                <Button variant="destructive" size="sm" onClick={stopBatch} className="rounded-lg h-9">
+                  <Square className="mr-2 h-4 w-4" /> Stop
+                </Button>
+              </div>
+              
+              <Progress value={progress} className="h-2.5 rounded-full" />
+              
+              {!isAutoSending && (
+                <Button
+                  onClick={() => sendNext(currentIndex + 1, sentInBatch, parseInt(batchLimit))}
+                  className="w-full h-12 text-md font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 shadow-lg"
+                >
+                  Send Next Email
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              )}
+              
+              <p className="text-[10px] text-center text-slate-400">
+                {isAutoSending 
+                  ? "Keep this tab open. Next email in 3s..." 
+                  : "Auto-send paused. Click button to continue manually."}
+              </p>
+           </div>
         </div>
       )}
     </div>
