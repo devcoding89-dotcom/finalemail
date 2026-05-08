@@ -4,6 +4,7 @@ import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { PageTransition } from '@/components/page-transition'
 import { MobileInstallBanner } from '@/components/mobile-install-banner'
+import { PwaProvider } from '@/components/pwa-provider'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -40,10 +41,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <PageTransition />
-        {children}
-        <Toaster position="top-center" richColors />
-        <MobileInstallBanner />
+        <PwaProvider>
+          <PageTransition />
+          {children}
+          <Toaster position="top-center" richColors />
+          <MobileInstallBanner />
+        </PwaProvider>
       </body>
     </html>
   )
