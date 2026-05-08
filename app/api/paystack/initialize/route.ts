@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { initializePayment } from '@/lib/paystack'
 import type { ApiResponse } from '@/types'
@@ -7,7 +7,7 @@ import type { ApiResponse } from '@/types'
  * POST /api/paystack/initialize
  * Start a ₦500/month payment for premium plan upgrade.
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const {
@@ -20,6 +20,9 @@ export async function POST() {
         { status: 401 }
       )
     }
+
+    // Capture origin for callback URL
+    const origin = request.nextUrl.origin
 
     // Check if already premium
     const { data: profile } = await supabase
@@ -42,7 +45,7 @@ export async function POST() {
     }
 
     // Initialize Paystack payment
-    const result = await initializePayment(user.email!, user.id)
+    const result = await initializePayment(user.email!, user.id, origin)
 
     if (!result.status) {
       console.error('[Paystack Route] Initialization failed:', result.message)

@@ -1,6 +1,5 @@
 // Paystack API integration for ₦500/month premium plan
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 const PAYSTACK_BASE_URL = 'https://api.paystack.co'
 
 interface PaystackInitResponse {
@@ -33,23 +32,27 @@ interface PaystackVerifyResponse {
  */
 export async function initializePayment(
   email: string,
-  userId: string
+  userId: string,
+  origin?: string // The current domain to ensure correct callback
 ): Promise<PaystackInitResponse> {
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
-    const callbackUrl = `${appUrl}/dashboard/subscribe?verify=true`
+    const secretKey = process.env.PAYSTACK_SECRET_KEY
+    const appUrl = origin || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+    
+    // Ensure no trailing slash on appUrl
+    const normalizedAppUrl = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl
+    const callbackUrl = `${normalizedAppUrl}/dashboard/subscribe?verify=true`
 
-    console.log(`[Paystack] Initializing payment for ${email} (${userId})`)
-    console.log(`[Paystack] Callback URL: ${callbackUrl}`)
+    console.log(`[Paystack] Initializing for ${email}. Callback: ${callbackUrl}`)
 
-    if (!PAYSTACK_SECRET_KEY) {
-      throw new Error('PAYSTACK_SECRET_KEY is missing from environment variables')
+    if (!secretKey) {
+      throw new Error('PAYSTACK_SECRET_KEY is not defined in environment')
     }
 
     const response = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        Authorization: `Bearer ${secretKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -67,18 +70,17 @@ export async function initializePayment(
     const data = (await response.json()) as PaystackInitResponse
     
     if (!response.ok || !data.status) {
-      console.error('[Paystack] Initialization Failed:', data)
+      console.error('[Paystack] API Error:', data)
       return {
         status: false,
-        message: data.message || 'Failed to initialize payment',
+        message: data.message || 'Paystack initialization failed',
         data: data.data || ({} as any)
       }
     }
 
-    console.log('[Paystack] Initialization Successful:', data.data.reference)
     return data
   } catch (error: any) {
-    console.error('[Paystack] Initialization Error:', error.message)
+    console.error('[Paystack] Exception:', error.message)
     return {
       status: false,
       message: error.message || 'Internal payment error',
@@ -94,10 +96,10 @@ export async function verifyPayment(
   reference: string
 ): Promise<PaystackVerifyResponse> {
   try {
-    console.log(`[Paystack] Verifying transaction: ${reference}`)
+    const secretKey = process.env.PAYSTACK_SECRET_KEY
 
-    if (!PAYSTACK_SECRET_KEY) {
-      throw new Error('PAYSTACK_SECRET_KEY is missing from environment variables')
+    if (!secretKey) {
+      throw new Error('PAYSTACK_SECRET_KEY is not defined in environment')
     }
 
     const response = await fetch(
@@ -105,7 +107,7 @@ export async function verifyPayment(
       {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          Authorization: `Bearer ${secretKey}`,
         },
       }
     )
@@ -113,18 +115,16 @@ export async function verifyPayment(
     const data = (await response.json()) as PaystackVerifyResponse
     
     if (!response.ok || !data.status) {
-      console.error('[Paystack] Verification Failed:', data)
       return {
         status: false,
-        message: data.message || 'Failed to verify payment',
+        message: data.message || 'Verification failed',
         data: data.data || ({} as any)
       }
     }
 
-    console.log('[Paystack] Verification Successful:', data.data.status)
     return data
   } catch (error: any) {
-    console.error('[Paystack] Verification Error:', error.message)
+    console.error('[Paystack] Verification Exception:', error.message)
     return {
       status: false,
       message: error.message || 'Internal verification error',
@@ -141,15 +141,18 @@ export function validateWebhookSignature(
   signature: string
 ): boolean {
   try {
+    const secretKey = process.env.PAYSTACK_SECRET_KEY
+    if (!secretKey) return false
+
     const crypto = require('crypto') as typeof import('crypto')
     const hash = crypto
-      .createHmac('sha512', PAYSTACK_SECRET_KEY)
+      .createHmac('sha512', secretKey)
       .update(body)
       .digest('hex')
 
     return hash === signature
   } catch (error) {
-    console.error('[Paystack] Webhook Signature Error:', error)
+    console.error('[Paystack] Webhook error:', error)
     return false
   }
 }
