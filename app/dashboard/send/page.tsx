@@ -69,7 +69,9 @@ export default function QuickSendPage() {
   // Smart Focus Trigger: When user returns to the tab, if we're waiting, trigger next.
   useEffect(() => {
     const handleFocus = () => {
-      if (isAutoSendingRef.current && countdown > 0) {
+      // If we are auto-sending and the window gets focus, it means the user likely 
+      // just came back from their email app. Trigger the next one immediately!
+      if (isAutoSendingRef.current) {
         console.log('[QuickSend] Tab focused, triggering next email immediately...')
         triggerNextNow()
       }
@@ -77,7 +79,7 @@ export default function QuickSendPage() {
 
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
-  }, [countdown])
+  }, [])
 
   // Stop everything on unmount
   useEffect(() => {
@@ -216,9 +218,17 @@ export default function QuickSendPage() {
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
     setCountdown(0)
     
+    // Find the next pending email
     const nextPending = emailsRef.current.findIndex((e, i) => i > currentIndexRef.current && e.status === 'pending')
+    
+    // Small delay to ensure the UI updates and the user sees what's happening
+    // before the next mailto triggers.
     if (nextPending !== -1) {
-      openEmail(nextPending, sentInBatchRef.current, batchLimitRef.current)
+      setTimeout(() => {
+        if (isAutoSendingRef.current) {
+          openEmail(nextPending, sentInBatchRef.current, batchLimitRef.current)
+        }
+      }, 800) 
     } else {
       stopBatch()
     }

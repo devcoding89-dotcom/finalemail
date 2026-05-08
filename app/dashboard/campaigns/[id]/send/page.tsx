@@ -33,6 +33,8 @@ import {
   Mail,
   ArrowLeft,
   ExternalLink,
+  Play,
+  ArrowRight,
 } from 'lucide-react'
 import type { Contact } from '@/types'
 import { CampaignStatusBadge } from '@/components/campaign-status-badge'
@@ -59,7 +61,36 @@ export default function CampaignSendPage() {
   const [batchLimit, setBatchLimit] = useState('10')
   const [autoScoutRunning, setAutoScoutRunning] = useState(false)
   const [autoScoutProgress, setAutoScoutProgress] = useState(0)
+  const [countdown, setCountdown] = useState(0)
+  const [currentContactEmail, setCurrentContactEmail] = useState('')
   const autoScoutAbort = useRef(false)
+  const isAutoScoutRunningRef = useRef(false)
+  const nextTriggerRef = useRef<(() => void) | null>(null)
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Sync ref
+  useEffect(() => {
+    isAutoScoutRunningRef.current = autoScoutRunning
+  }, [autoScoutRunning])
+
+  // Focus detection for seamless loop
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isAutoScoutRunningRef.current && nextTriggerRef.current) {
+        console.log('[AutoScout] Tab focused, triggering next email immediately...')
+        // Small delay to let the user see the UI
+        setTimeout(() => {
+          if (nextTriggerRef.current) nextTriggerRef.current()
+        }, 800)
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+    }
+  }, [])
 
   const fetchCampaignData = useCallback(async () => {
     try {
@@ -153,6 +184,7 @@ export default function CampaignSendPage() {
       }
 
       const contact = toSend[i]
+      setCurrentContactEmail(contact.email)
       setAutoScoutProgress(Math.round(((i + 1) / toSend.length) * 100))
 
       try {
@@ -164,14 +196,8 @@ export default function CampaignSendPage() {
         const json = await res.json()
 
         if (json.success) {
-          const popup = window.open(json.data.mailtoLink, '_blank')
-          
-          if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-             toast.error('Popup blocked! Please allow popups to continue Auto Scout.', {
-               duration: 5000
-             })
-             break
-          }
+          // Use location.href for smoother mailto handling (doesn't open empty tabs)
+          window.location.href = json.data.mailtoLink
           
           setSentContacts((prev) => new Set(prev).add(contact.id))
           setCampaign((prev) =>
@@ -188,9 +214,28 @@ export default function CampaignSendPage() {
         toast.error(`Error sending to ${contact.email}`)
       }
 
-      // Wait 5 seconds between sends to avoid overwhelming email client
+      // Wait for next with focus-triggered skip
       if (i < toSend.length - 1 && !autoScoutAbort.current) {
-        await new Promise((resolve) => setTimeout(resolve, 5000))
+        setCountdown(5)
+        await new Promise<void>((resolve) => {
+          nextTriggerRef.current = () => {
+             nextTriggerRef.current = null
+             if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+             setCountdown(0)
+             resolve()
+          }
+          
+          if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+          countdownIntervalRef.current = setInterval(() => {
+            setCountdown((prev) => {
+              if (prev <= 1) {
+                if (nextTriggerRef.current) nextTriggerRef.current()
+                return 0
+              }
+              return prev - 1
+            })
+          }, 1000)
+        })
       }
     }
 
@@ -202,6 +247,9 @@ export default function CampaignSendPage() {
 
   const stopAutoScout = () => {
     autoScoutAbort.current = true
+    if (nextTriggerRef.current) nextTriggerRef.current() // Wake up the promise loop
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+    setCountdown(0)
   }
 
   if (loading) {
@@ -455,6 +503,51 @@ export default function CampaignSendPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Floating Status Bar for Auto Scout */}
+      {autoScoutRunning && (
+        <div className="fixed bottom-0 left-0 right-0 p-5 bg-[#020617]/95 backdrop-blur-2xl border-t border-white/10 z-[1000] animate-in slide-in-from-bottom duration-300 shadow-[0_-30px_60px_-15px_rgba(0,0,0,0.6)]">
+           <div className="max-w-2xl mx-auto space-y-4 text-white">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                      {countdown > 0 ? 'Preparing Next' : 'Auto Scout Running'} 
+                    </p>
+                    <span className="text-slate-500 font-black text-[10px]">({sentContacts.size} / {campaign.total_emails})</span>
+                  </div>
+                  <p className="text-sm font-bold truncate">
+                    {currentContactEmail || 'Processing...'}
+                  </p>
+                </div>
+                <Button variant="destructive" size="sm" onClick={stopAutoScout} className="rounded-xl h-12 font-black px-5 shadow-lg shadow-red-500/20">
+                  <Square className="mr-2 h-4 w-4 fill-white" /> STOP
+                </Button>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex justify-between text-[9px] font-black uppercase text-slate-500">
+                  <span>Batch Progress</span>
+                  <span>{autoScoutProgress}%</span>
+                </div>
+                <Progress value={autoScoutProgress} className="h-2 rounded-full bg-white/10" />
+              </div>
+              
+              {countdown > 0 && (
+                <Button
+                  onClick={() => {
+                    if (nextTriggerRef.current) nextTriggerRef.current()
+                  }}
+                  className="w-full h-14 text-lg font-black rounded-2xl bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-600/30 text-white animate-pulse"
+                >
+                  <Play className="mr-2 h-5 w-5 fill-white" />
+                  SEND NEXT IN {countdown}...
+                </Button>
+              )}
+           </div>
+        </div>
+      )}
     </div>
   )
 }
