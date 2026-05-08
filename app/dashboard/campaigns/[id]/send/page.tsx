@@ -48,6 +48,8 @@ interface CampaignDetail {
   total_emails: number
   sent_count: number
   list_id: string
+  current_index: number
+  sending_mode: 'manual' | 'quick' | 'auto'
 }
 
 export default function CampaignSendPage() {
@@ -348,16 +350,39 @@ export default function CampaignSendPage() {
       {/* Auto Scout section */}
       <Card className="border-indigo-500/20 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 dark:from-indigo-950/20 dark:to-violet-950/20">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Zap className="h-5 w-5 text-amber-500" />
-            Auto Scout
+          <CardTitle className="text-base flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500" />
+              Auto Scout
+            </div>
+            <Badge variant="outline" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20">
+              {campaign.sending_mode === 'auto' ? 'Full Automation' : 'Quick Send (mailto)'}
+            </Badge>
           </CardTitle>
           <CardDescription>
-            Automatically open email for each contact with 5-second intervals
+            {campaign.sending_mode === 'auto' 
+              ? 'Use the Auto Scout Chrome Extension for full 100% browser automation.'
+              : 'Automatically open email for each contact with 5-second intervals'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-end gap-4 max-w-md">
+          {campaign.sending_mode === 'auto' ? (
+            <div className="bg-indigo-950/40 p-4 rounded-lg border border-indigo-500/30">
+              <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
+                <Play className="h-4 w-4" /> Ready for Chrome Extension
+              </h4>
+              <p className="text-sm text-slate-300 mb-4">
+                You have configured this campaign for Full Automation. To start sending, open the <strong>Auto Scout Chrome Extension</strong> and paste this Campaign ID:
+              </p>
+              <code className="block w-full p-3 bg-black/50 rounded text-indigo-300 font-mono text-sm border border-white/5 select-all text-center">
+                {campaign.id}
+              </code>
+              <p className="text-xs text-slate-500 mt-3 text-center">
+                Current Index: {campaign.current_index || 0} / {contacts.length}
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-end gap-4 max-w-md">
             {!autoScoutRunning ? (
               <>
                 <div className="flex-1 space-y-1.5">
@@ -407,6 +432,37 @@ export default function CampaignSendPage() {
               </p>
             </div>
           )}
+          
+          {campaign.sending_mode !== 'auto' && (
+            <div className="mt-4 pt-4 border-t border-white/5">
+              <Button 
+                variant="link" 
+                className="text-xs text-indigo-400 p-0 h-auto"
+                onClick={async () => {
+                  toast.success("Switched to Full Automation mode!");
+                  setCampaign(prev => prev ? {...prev, sending_mode: 'auto'} : prev);
+                }}
+              >
+                Switch to Full Chrome Extension Automation →
+              </Button>
+            </div>
+          )}
+          {campaign.sending_mode === 'auto' && (
+             <div className="mt-4">
+               <Button 
+                 variant="link" 
+                 className="text-xs text-slate-400 p-0 h-auto"
+                 onClick={async () => {
+                   toast.success("Switched back to Quick Send mode");
+                   setCampaign(prev => prev ? {...prev, sending_mode: 'quick'} : prev);
+                 }}
+               >
+                 ← Back to Quick Send (mailto)
+               </Button>
+             </div>
+          )}
+          
+          </div>
         </CardContent>
       </Card>
 

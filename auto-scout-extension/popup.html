@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Auto Scout</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 18px;
+      color: #4f46e5;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #475569;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #4338ca;
+    }
+    button.danger {
+      background-color: #ef4444;
+      margin-top: 8px;
+    }
+    button.danger:hover {
+      background-color: #dc2626;
+    }
+    .status-panel {
+      margin-top: 16px;
+      padding: 12px;
+      background-color: #f8fafc;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>🚀 Auto Scout</h2>
+  
+  <div id="setup-panel">
+    <div class="form-group">
+      <label for="apiUrl">App URL (e.g. http://localhost:3000)</label>
+      <input type="text" id="apiUrl" value="http://localhost:3000" />
+    </div>
+    <div class="form-group">
+      <label for="campaignId">Campaign ID</label>
+      <input type="text" id="campaignId" placeholder="Paste your Campaign ID here" />
+    </div>
+    <button id="startBtn">Start Auto Scout</button>
+  </div>
+
+  <div id="active-panel" class="hidden">
+    <div class="status-panel">
+      <strong>Status:</strong> <span id="statusText">Running...</span><br>
+      <strong>Current:</strong> <span id="currentEmail">Initializing...</span>
+    </div>
+    <button id="stopBtn" class="danger">Stop Auto Scout</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
