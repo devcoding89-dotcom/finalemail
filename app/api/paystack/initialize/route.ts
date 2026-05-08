@@ -48,13 +48,13 @@ export async function POST(request: NextRequest) {
     const result = await initializePayment(user.email!, user.id, origin)
 
     if (!result.status) {
-      console.error('[Paystack Route] Initialization failed:', result.message)
+      console.error('[Paystack Route] Initialization failed. Paystack Message:', result.message)
       return NextResponse.json(
         {
           success: false,
           error: result.message || 'Failed to initialize payment',
         } satisfies ApiResponse,
-        { status: 500 }
+        { status: 400 } // Change to 400 as it's often a configuration/payload issue
       )
     }
 

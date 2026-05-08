@@ -38,8 +38,10 @@ export default function SubscribePage() {
     const verify = searchParams.get('verify')
     const reference = searchParams.get('reference')
 
-    if (verify === 'true' && reference) {
+    if (verify === 'true' && reference && !verifying) {
       setVerifying(true)
+      console.log('[Subscribe] Starting verification for:', reference)
+      
       fetch(`/api/paystack/verify?reference=${reference}`)
         .then((res) => res.json())
         .then((json) => {
@@ -48,12 +50,16 @@ export default function SubscribePage() {
             router.push('/dashboard')
             router.refresh()
           } else {
-            toast.error(json.error || 'Payment verification failed')
+            console.error('[Subscribe] Verification error:', json.error)
+            toast.error(json.error || 'Payment verification failed', {
+              duration: 10000 // Show for longer
+            })
             setVerifying(false)
           }
         })
-        .catch(() => {
-          toast.error('Payment verification failed')
+        .catch((err) => {
+          console.error('[Subscribe] Verification exception:', err)
+          toast.error('Payment verification failed. Please check your connection.')
           setVerifying(false)
         })
     }

@@ -1,4 +1,4 @@
-// Paystack API integration for ₦500/month premium plan
+import crypto from 'crypto'
 
 const PAYSTACK_BASE_URL = 'https://api.paystack.co'
 
@@ -67,18 +67,18 @@ export async function initializePayment(
       }),
     })
 
-    const data = (await response.json()) as PaystackInitResponse
+    const data = (await response.json()) as any
     
     if (!response.ok || !data.status) {
-      console.error('[Paystack] API Error:', data)
+      console.error('[Paystack] API Error Detail:', JSON.stringify(data, null, 2))
       return {
         status: false,
-        message: data.message || 'Paystack initialization failed',
+        message: data.message || `Paystack error (${response.status})`,
         data: data.data || ({} as any)
       }
     }
 
-    return data
+    return data as PaystackInitResponse
   } catch (error: any) {
     console.error('[Paystack] Exception:', error.message)
     return {
@@ -144,7 +144,6 @@ export function validateWebhookSignature(
     const secretKey = process.env.PAYSTACK_SECRET_KEY
     if (!secretKey) return false
 
-    const crypto = require('crypto') as typeof import('crypto')
     const hash = crypto
       .createHmac('sha512', secretKey.trim())
       .update(body)

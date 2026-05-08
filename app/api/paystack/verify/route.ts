@@ -34,11 +34,11 @@ export async function GET(request: NextRequest) {
     const result = await verifyPayment(reference)
 
     if (!result.status || result.data.status !== 'success') {
-      console.error('[Paystack Route] Verification failed:', result.message || 'Status not success')
+      console.error('[Paystack Route] Verification failed. Paystack Status:', result.data?.status, 'Message:', result.message)
       return NextResponse.json(
         {
           success: false,
-          error: 'Payment verification failed. Please contact support with reference: ' + reference,
+          error: `Payment verification failed (${result.data?.status || 'no_status'}). Reference: ${reference}`,
         } satisfies ApiResponse,
         { status: 400 }
       )
