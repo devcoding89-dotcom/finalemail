@@ -23,27 +23,25 @@ export async function GET() {
       .eq('id', user.id)
       .single()
 
-    // 2. Fetch campaign performance
+    // 2. Fetch all campaigns performance
     const { data: campaigns } = await supabase
       .from('campaigns')
-      .select('name, total_emails, sent_count, open_count, created_at')
+      .select('id, name, total_emails, sent_count, open_count, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(10)
 
-    // 3. Fetch recent email activity for the last 7 days
-    const { data: logs } = await supabase
+    // 3. Fetch summary of logs
+    const { count: totalSentCount } = await supabase
       .from('email_logs')
-      .select('created_at, status')
-      .eq('campaign_id', campaigns?.[0]?.id || '') // Just a placeholder, better logic below
-      // Actually we want all logs for user's campaigns
-      // Let's use a join or just fetch if campaigns exist
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'sent')
+      // This is slightly complex without a direct join, but we can rely on campaign sent_counts
     
     let chartData: any[] = []
     if (campaigns && campaigns.length > 0) {
-      // Map campaigns to chart data
-      chartData = campaigns.slice(0, 7).reverse().map(c => ({
-        name: c.name.length > 15 ? c.name.substring(0, 12) + '...' : c.name,
+      // Map last 7 campaigns to chart data
+      chartData = [...campaigns].slice(0, 7).reverse().map(c => ({
+        name: c.name.length > 12 ? c.name.substring(0, 10) + '...' : c.name,
         sent: c.sent_count,
         total: c.total_emails
       }))

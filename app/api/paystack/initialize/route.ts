@@ -64,12 +64,12 @@ export async function POST() {
       authorization_url: string
       reference: string
     }>)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Paystack init error:', error)
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to initialize payment',
+        error: error.message || 'Failed to initialize payment',
       } satisfies ApiResponse,
       { status: 500 }
     )
