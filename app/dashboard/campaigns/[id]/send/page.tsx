@@ -266,75 +266,55 @@ export default function CampaignSendPage() {
               {/* Action Buttons */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Button 
-                  variant="outline" 
-                  className={`w-full ${sendingMode === 'manual' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
-                  onClick={handleCopyEmail}
-                >
-                  <Copy className="mr-2 h-4 w-4" /> Copy Email
-                </Button>
-                
+              <div className="space-y-4">
                 <Button 
-                  variant="outline"
-                  className={`w-full ${sendingMode === 'quick' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
-                  onClick={() => handleOpenGmail()}
-                >
-                  <Mail className="mr-2 h-4 w-4" /> Open in Gmail
-                </Button>
+                    className="w-full h-16 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black text-xl shadow-xl shadow-indigo-500/30 group animate-in zoom-in-95 duration-300"
+                    onClick={() => {
+                      if (currentIndex === 0 && !sendingMode) {
+                        handleOpenGmail();
+                        setSendingMode('manual');
+                      } else {
+                        handleMarkSent('sent');
+                      }
+                    }}
+                    id="primary-action-btn"
+                  >
+                    {currentIndex === 0 && !sendingMode ? '🚀 START SENDING' : '✅ SENT — NEXT CONTACT'}
+                    <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
+                  </Button>
 
-                  <div className="relative">
+                  <div className="grid grid-cols-3 gap-3">
                     <Button 
                       variant="outline"
-                      className={`w-full ${sendingMode === 'auto' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
+                      className="h-10 text-[10px] font-bold uppercase"
+                      onClick={handleCopyEmail}
+                    >
+                      <Copy className="mr-2 h-3.5 w-3.5" /> Copy
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="h-10 text-[10px] font-bold uppercase"
+                      onClick={() => handleOpenGmail()}
+                    >
+                      <Mail className="mr-2 h-3.5 w-3.5" /> Re-open
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className={`h-10 text-[10px] font-bold uppercase ${sendingMode === 'auto' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
                       onClick={() => {
                         setSendingMode('auto')
-                        // Trigger the extension via window message
                         window.postMessage({ 
                           type: 'START_AUTO_SCOUT', 
                           campaignId: campaignId,
                           apiUrl: window.location.origin 
                         }, '*')
-                        toast.success('Auto Scout started! Open Gmail to begin.')
+                        toast.success('Auto Scout started!')
                       }}
                     >
-                      <Zap className="mr-2 h-4 w-4" /> Auto Scout
+                      <Zap className="mr-2 h-3.5 w-3.5" /> Auto
                     </Button>
-                    {sendingMode === 'auto' && (
-                      <div className="absolute top-12 left-0 right-0 p-2 bg-indigo-600 text-white text-xs rounded shadow-xl z-10 animate-in fade-in slide-in-from-top-2">
-                        <strong>Auto Mode Active!</strong> The extension will now open emails automatically.
-                      </div>
-                    )}
                   </div>
               </div>
-
-              {/* Resolution Buttons */}
-              <div className="pt-6 border-t border-white/5">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">After sending:</p>
-                <div className="flex gap-3">
-                  <Button 
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
-                    onClick={() => handleMarkSent('sent')}
-                  >
-                    <Check className="mr-2 h-4 w-4" /> Sent — Next
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    className="flex-1"
-                    onClick={() => handleMarkSent('failed')}
-                  >
-                    <X className="mr-2 h-4 w-4" /> Failed — Skip
-                  </Button>
-                </div>
-                {sendingMode === 'quick' && currentIndex < contacts.length && (
-                  <Button 
-                    variant="secondary"
-                    className="w-full mt-3 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 border-none"
-                    onClick={() => handleOpenGmail()}
-                  >
-                    <Zap className="mr-2 h-4 w-4" /> {currentIndex === 0 ? 'Start Quick Send' : 'Re-open Current Email'}
-                  </Button>
-                )}
-              </div>
-
             </>
           )}
 
