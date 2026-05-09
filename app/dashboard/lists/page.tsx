@@ -322,16 +322,18 @@ export default function ListsPage() {
               <Table>
                 <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
                   <TableRow>
-                    <TableHead className="font-bold text-slate-500 uppercase text-[10px] tracking-widest pl-6">Name</TableHead>
+                    <TableHead className="w-12 pl-6 font-bold text-slate-500 uppercase text-[10px] tracking-widest">#</TableHead>
+                    <TableHead className="font-bold text-slate-500 uppercase text-[10px] tracking-widest">Name</TableHead>
                     <TableHead className="font-bold text-slate-500 uppercase text-[10px] tracking-widest text-center">Contacts</TableHead>
                     <TableHead className="font-bold text-slate-500 uppercase text-[10px] tracking-widest">Created</TableHead>
                     <TableHead className="w-16 pr-6" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {lists.map((list) => (
+                  {lists.map((list, index) => (
                     <TableRow key={list.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                      <TableCell className="font-bold pl-6 py-4">{list.name}</TableCell>
+                      <TableCell className="pl-6 py-4 text-slate-400 font-mono text-xs">{index + 1}</TableCell>
+                      <TableCell className="font-bold py-4">{list.name}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant="secondary" className="font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-3">
                           {list.total_contacts}

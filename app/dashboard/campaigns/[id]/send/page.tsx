@@ -235,7 +235,10 @@ export default function CampaignSendPage() {
           ) : (
             <>
               {/* Current Contact Info */}
-              <div className="bg-slate-100 dark:bg-slate-800/50 p-4 rounded-xl space-y-3">
+              <div className="bg-slate-100 dark:bg-slate-800/50 p-4 rounded-xl space-y-3 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-3 bg-indigo-500/10 text-indigo-500 text-[10px] font-black uppercase tracking-widest rounded-bl-xl border-b border-l border-indigo-500/10">
+                   Contact #{currentIndex + 1} of {contacts.length}
+                </div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Current Contact:</p>
                 <div className="flex items-center gap-3">
                   <Mail className="h-4 w-4 text-slate-400" />
