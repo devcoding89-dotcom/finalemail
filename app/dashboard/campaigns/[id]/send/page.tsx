@@ -278,23 +278,29 @@ export default function CampaignSendPage() {
                   <Mail className="mr-2 h-4 w-4" /> Open in Gmail
                 </Button>
 
-                <div className="relative">
-                  <Button 
-                    variant="outline"
-                    className={`w-full ${sendingMode === 'auto' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
-                    onClick={() => {
-                      if (sendingMode !== 'auto') handleUpdateMode('auto')
-                      else toast.info('Open the Chrome Extension to start Auto Scout!')
-                    }}
-                  >
-                    <Zap className="mr-2 h-4 w-4" /> Auto Scout
-                  </Button>
-                  {sendingMode === 'auto' && (
-                    <div className="absolute top-12 left-0 right-0 p-2 bg-indigo-600 text-white text-xs rounded shadow-xl z-10 animate-in fade-in slide-in-from-top-2">
-                      Open Extension & paste ID: <strong className="block mt-1 font-mono text-center bg-black/30 p-1 rounded select-all">{campaignId}</strong>
-                    </div>
-                  )}
-                </div>
+                  <div className="relative">
+                    <Button 
+                      variant="outline"
+                      className={`w-full ${sendingMode === 'auto' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
+                      onClick={() => {
+                        setSendingMode('auto')
+                        // Trigger the extension via window message
+                        window.postMessage({ 
+                          type: 'START_AUTO_SCOUT', 
+                          campaignId: campaignId,
+                          apiUrl: window.location.origin 
+                        }, '*')
+                        toast.success('Auto Scout started! Open Gmail to begin.')
+                      }}
+                    >
+                      <Zap className="mr-2 h-4 w-4" /> Auto Scout
+                    </Button>
+                    {sendingMode === 'auto' && (
+                      <div className="absolute top-12 left-0 right-0 p-2 bg-indigo-600 text-white text-xs rounded shadow-xl z-10 animate-in fade-in slide-in-from-top-2">
+                        <strong>Auto Mode Active!</strong> The extension will now open emails automatically.
+                      </div>
+                    )}
+                  </div>
               </div>
 
               {/* Resolution Buttons */}

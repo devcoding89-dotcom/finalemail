@@ -13,6 +13,13 @@ window.addEventListener('load', () => {
   });
 });
 
+// Bridge: Listen for "START_AUTO_SCOUT" from the Dashboard website
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'START_AUTO_SCOUT') {
+    chrome.runtime.sendMessage(event.data);
+  }
+});
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
