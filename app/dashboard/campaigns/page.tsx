@@ -73,7 +73,7 @@ export default function CampaignsPage() {
     <div className="space-y-10 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-black italic uppercase tracking-tighter">Campaigns</h1>
+          <h1 className="text-2xl font-black italic uppercase tracking-tighter">Campaigns</h1>
           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Manage your manual email outreach</p>
         </div>
         <Link href="/dashboard/campaigns/new">
@@ -112,7 +112,7 @@ export default function CampaignsPage() {
                   <div className="p-8 space-y-6">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <h3 className="font-black text-2xl tracking-tight group-hover:text-indigo-600 transition-colors">{c.name}</h3>
+                        <h3 className="font-black text-lg tracking-tight group-hover:text-indigo-600 transition-colors">{c.name}</h3>
                         <div className="flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                           <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">{c.lists?.name || 'No List'}</span>
                           <span>•</span>
