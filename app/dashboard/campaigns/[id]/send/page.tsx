@@ -55,7 +55,13 @@ export default function CampaignSendPage() {
   const handleMailto = () => {
     if (!data?.email?.mailtoLink) return;
     window.open(data.email.mailtoLink, '_blank');
-    toast.info('Email app opened. Send it, then come back!');
+    
+    // Automatically mark as sent and load next after a small delay
+    // This removes the need for the user to manually click "I Sent This"
+    toast.info('Opening Gmail... Auto-loading next contact.');
+    setTimeout(() => {
+      handleAction('sent');
+    }, 1500);
   };
 
   const handleAction = async (action: 'sent' | 'skipped' | 'bounced') => {

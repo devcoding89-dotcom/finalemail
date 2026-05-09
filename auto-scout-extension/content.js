@@ -78,6 +78,14 @@ async function automateGmailCompose(data) {
     
     console.log("Auto Scout: Clicking Send...");
     sendBtn.click();
+
+    // 5. Handle potential Gmail confirmation popups (e.g., "Send anyway?" or "Missing subject")
+    await sleep(800);
+    const confirmationBtn = document.querySelector('button[name="ok"], button:contains("Send anyway"), button:contains("Continue"), div[role="button"]:contains("OK")');
+    if (confirmationBtn) {
+      console.log("Auto Scout: Clicking confirmation popup...");
+      confirmationBtn.click();
+    }
     
     // Wait for the "Message sent" toast to ensure it went through
     console.log("Auto Scout: Waiting for confirmation...");
