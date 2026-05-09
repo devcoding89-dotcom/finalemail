@@ -264,8 +264,6 @@ export default function CampaignSendPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Button 
               <div className="space-y-4">
                 <Button 
                     className="w-full h-16 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black text-xl shadow-xl shadow-indigo-500/30 group animate-in zoom-in-95 duration-300"
