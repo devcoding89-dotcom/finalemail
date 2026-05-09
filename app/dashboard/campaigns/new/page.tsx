@@ -42,7 +42,7 @@ export default function NewCampaignPage() {
       
       if (data.success) {
         toast.success('Campaign created!');
-        router.push(`/dashboard/campaigns/${data.data.id}/send`);
+        router.push(`/dashboard/campaigns/${data.data.id}`);
       } else {
         toast.error(data.error || 'Failed to create');
       }

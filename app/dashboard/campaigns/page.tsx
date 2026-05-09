@@ -107,7 +107,7 @@ export default function CampaignsPage() {
             const progress = (c.sent_count / (c.total_count || 1)) * 100;
             return (
               <Card key={c.id} className="group overflow-hidden rounded-3xl border-2 border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 transition-all shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 cursor-pointer" 
-                    onClick={() => router.push(`/dashboard/campaigns/${c.id}/send`)}>
+                    onClick={() => router.push(`/dashboard/campaigns/${c.id}`)}>
                 <CardContent className="p-0">
                   <div className="p-8 space-y-6">
                     <div className="flex items-start justify-between">
