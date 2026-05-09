@@ -108,8 +108,8 @@ export default function CampaignSendPage() {
     if (!targetContact) return
 
     const { subject, body } = getPersonalizedData(targetContact)
-    const mailtoLink = `mailto:${targetContact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    window.open(mailtoLink, 'emailll_target')
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetContact.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    window.open(gmailUrl, 'emailll_target')
   }
 
   const handleMarkSent = async (status: 'sent' | 'failed') => {
