@@ -219,111 +219,152 @@ export default function CampaignSendPage() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm font-medium">
               <span>Progress: {currentIndex} / {contacts.length} sent</span>
-              <span className="text-indigo-500">{progressPct}%</span>
-            </div>
-            <Progress value={progressPct} className="h-2" />
-          </div>
-
-          {isComplete ? (
-            <div className="py-12 text-center space-y-4">
-              <div className="h-16 w-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto">
-                <Check className="h-8 w-8 text-emerald-500" />
+        <CardContent className="p-6">
+          {sendingMode === 'auto' ? (
+            /* MODE 3: Auto Scout Active State */
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <div className="flex items-center justify-between p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-500/30">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+                    <Zap className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-black italic uppercase tracking-wider">Auto Scout Running...</h3>
+                    <p className="text-[10px] text-indigo-100 font-bold uppercase">{currentContact?.email}</p>
+                  </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-white hover:bg-white/10 font-bold"
+                  onClick={() => setSendingMode(null)}
+                >
+                  <Pause className="mr-2 h-4 w-4" /> PAUSE
+                </Button>
               </div>
-              <h3 className="text-xl font-bold">Campaign Complete!</h3>
-              <p className="text-muted-foreground">All contacts in this list have been processed.</p>
+
+              <div className="space-y-4 p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-sm font-bold text-slate-600">
+                    <div className="h-2 w-2 bg-emerald-500 rounded-full" />
+                    [Opening Gmail...]
+                  </div>
+                  <div className="flex items-center gap-3 text-sm font-bold text-slate-600">
+                    <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
+                    [Filling email...]
+                  </div>
+                  <div className="flex items-center gap-3 text-sm font-bold text-slate-400">
+                    <div className="h-2 w-2 bg-slate-300 rounded-full" />
+                    [Clicking send...]
+                  </div>
+                  <div className="flex items-center gap-3 text-sm font-bold text-slate-400">
+                    <div className="h-2 w-2 bg-slate-300 rounded-full" />
+                    [Waiting for confirmation...]
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex justify-between text-[10px] font-black text-slate-500 uppercase mb-2">
+                    <span>Progress: {currentIndex} / {contacts.length}</span>
+                    <span className="text-indigo-600">{Math.round((currentIndex / contacts.length) * 100)}%</span>
+                  </div>
+                  <Progress value={(currentIndex / contacts.length) * 100} className="h-3 rounded-full" />
+                </div>
+              </div>
+              
+              <div className="flex justify-center">
+                <Select defaultValue="normal">
+                  <SelectTrigger className="w-[180px] h-10 font-bold uppercase text-[10px]">
+                    <Zap className="mr-2 h-3 w-3 text-indigo-500" />
+                    <SelectValue placeholder="Speed" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fast">⚡ Speed: Fast</SelectItem>
+                    <SelectItem value="normal">⚡ Speed: Normal</SelectItem>
+                    <SelectItem value="slow">⚡ Speed: Slow</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           ) : (
+            /* MODE 1 & 2: Manual / Quick Send UI */
             <>
-              {/* Current Contact Info */}
-              <div className="bg-slate-100 dark:bg-slate-800/50 p-4 rounded-xl space-y-3 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-3 bg-indigo-500/10 text-indigo-500 text-[10px] font-black uppercase tracking-widest rounded-bl-xl border-b border-l border-indigo-500/10">
-                   Contact #{currentIndex + 1} of {contacts.length}
+              {/* Progress & Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Manual Outreach</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-black">{currentIndex + 1}</span>
+                    <span className="text-slate-300 font-bold">/</span>
+                    <span className="text-slate-400 font-bold">{contacts.length}</span>
+                  </div>
                 </div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Current Contact:</p>
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-slate-400" />
-                  <span className="font-mono text-sm">{currentContact?.email}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <User className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm">{currentContact?.name || 'No name'}</span>
-                  <span className="text-slate-300">@</span>
-                  <Building className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm">{currentContact?.company || 'No company'}</span>
+                <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                   <User className="h-6 w-6 text-indigo-600" />
                 </div>
               </div>
 
-              {/* Email Preview */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-black">
-                <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-3 text-sm font-medium flex gap-2">
-                  <span className="text-muted-foreground">Subject:</span> {personalizedSubject}
+              {/* Contact Info Card */}
+              <div className="bg-slate-50 dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4 mb-6">
+                <div className="flex flex-col gap-1">
+                   <div className="text-xl font-black tracking-tight">{currentContact?.name || 'Unknown Contact'}</div>
+                   <div className="flex items-center gap-2 text-indigo-600 text-sm font-bold">
+                     <Mail className="h-3.5 w-3.5" />
+                     {currentContact?.email}
+                   </div>
+                   <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase mt-1">
+                     <Building className="h-3.5 w-3.5" />
+                     {currentContact?.company || 'No Company'}
+                   </div>
                 </div>
-                <div className="p-4 text-sm whitespace-pre-wrap font-sans leading-relaxed text-slate-700 dark:text-slate-300 min-h-[120px]">
-                  {personalizedBody}
+
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Personalized Message:</p>
+                   <div className="p-4 bg-white dark:bg-black rounded-2xl border border-slate-100 dark:border-slate-800 text-sm leading-relaxed min-h-[100px] whitespace-pre-wrap">
+                      {personalizedBody}
+                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="space-y-4">
                 <Button 
                     className="w-full h-16 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black text-xl shadow-xl shadow-indigo-500/30 group animate-in zoom-in-95 duration-300"
                     onClick={() => {
-                      // 1. Open the current contact in Gmail
                       handleOpenGmail();
-                      
-                      // 2. Mark as sent and move to next (if we've actually started)
-                      if (currentIndex < contacts.length) {
-                        handleMarkSent('sent');
-                      }
-                      
-                      setSendingMode('manual');
+                      handleMarkSent('sent');
                     }}
                     id="primary-action-btn"
                   >
-                    {currentIndex === 0 && !sendingMode ? '🚀 START CAMPAIGN' : '📨 OPEN & SEND NEXT'}
+                    📨 OPEN & SEND NEXT
                     <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
                   </Button>
 
                   <div className="grid grid-cols-3 gap-3">
                     <Button 
                       variant="outline"
-                      className="h-10 text-[10px] font-bold uppercase"
+                      className="h-12 text-[10px] font-bold uppercase rounded-2xl"
                       onClick={handleCopyEmail}
                     >
-                      <Copy className="mr-2 h-3.5 w-3.5" /> Copy
+                      <Copy className="mr-2 h-4 w-4" /> Copy
                     </Button>
                     <Button 
                       variant="outline"
-                      className="h-10 text-[10px] font-bold uppercase"
+                      className="h-12 text-[10px] font-bold uppercase rounded-2xl"
                       onClick={() => handleOpenGmail()}
                     >
-                      <Mail className="mr-2 h-3.5 w-3.5" /> Re-open
+                      <Mail className="mr-2 h-4 w-4" /> Mailto
                     </Button>
                     <Button 
                       variant="outline"
-                      className={`h-10 text-[10px] font-bold uppercase ${sendingMode === 'auto' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
-                      onClick={() => {
-                        setSendingMode('auto')
-                        window.postMessage({ 
-                          type: 'START_AUTO_SCOUT', 
-                          campaignId: campaignId,
-                          apiUrl: window.location.origin 
-                        }, '*')
-                        toast.success('Auto Scout started!')
-                      }}
+                      className="h-12 text-[10px] font-bold uppercase rounded-2xl bg-indigo-50 text-indigo-600 border-indigo-100"
+                      onClick={() => setSendingMode('auto')}
                     >
-                      <Zap className="mr-2 h-3.5 w-3.5" /> Auto
+                      <Zap className="mr-2 h-4 w-4" /> Auto Scout
                     </Button>
                   </div>
               </div>
             </>
           )}
-
-          <div className="pt-4 flex justify-center">
-             <Button variant="ghost" size="sm" className="text-muted-foreground">
-               <Pause className="mr-2 h-4 w-4" /> Pause Campaign
-             </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
