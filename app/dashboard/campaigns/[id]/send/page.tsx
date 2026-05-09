@@ -109,7 +109,7 @@ export default function CampaignSendPage() {
 
     const { subject, body } = getPersonalizedData(targetContact)
     const mailtoLink = `mailto:${targetContact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    window.open(mailtoLink, '_blank')
+    window.open(mailtoLink, 'emailll_target')
   }
 
   const handleMarkSent = async (status: 'sent' | 'failed') => {
