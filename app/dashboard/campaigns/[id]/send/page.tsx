@@ -1,4 +1,6 @@
 'use client'
+// Force build trigger 1
+
 
 import { useState, useCallback, useEffect } from 'react'
 import { useParams } from 'next/navigation'
