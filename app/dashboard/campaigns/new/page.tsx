@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { ArrowLeft, Rocket, Mail, LayoutGrid, Zap } from 'lucide-react';
+import { ArrowLeft, Rocket, Mail, LayoutGrid, Zap, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NewCampaignPage() {
