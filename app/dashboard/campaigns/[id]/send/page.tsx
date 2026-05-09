@@ -82,7 +82,8 @@ export default function CampaignSendPage() {
 
   const handleMailto = () => {
     if (!data?.email?.mailtoLink) return;
-    window.open(data.email.mailtoLink, '_blank');
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(data.contact.email)}&su=${encodeURIComponent(data.email.subject)}&body=${encodeURIComponent(data.email.bodyText)}`;
+    window.open(gmailUrl, 'emailll_compose', 'width=600,height=600');
     toast.info('Opening Gmail... Auto-loading next.');
     setTimeout(() => handleAction('sent'), 1500);
   };

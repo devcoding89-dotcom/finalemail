@@ -51,7 +51,7 @@ async function processNextEmail() {
 
     // Reuse the existing tab if we have one, otherwise create a new one
     chrome.storage.local.get(['lastTabId'], (result) => {
-      const composeUrl = `https://mail.google.com/mail/u/0/#inbox?compose=new`;
+      const composeUrl = `https://mail.google.com/mail/?view=cm&fs=1`;
       
       const tabData = {
         pendingEmailData: {
