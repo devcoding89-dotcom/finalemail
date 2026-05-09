@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       .from('contacts')
       .select('*', { count: 'exact', head: true })
       .eq('list_id', body.list_id)
-      .eq('status', 'valid')
+      .not('status', 'in', '("invalid","bounced")')
 
     const { data: campaign, error } = await supabase
       .from('campaigns')
