@@ -359,9 +359,9 @@ export default function CampaignSendPage() {
                       className="h-12 text-[10px] font-bold uppercase rounded-2xl bg-indigo-50 text-indigo-600 border-indigo-100"
                       onClick={() => setSendingMode('auto')}
                     >
-                      <Zap className="mr-2 h-4 w-4" /> Auto Scout
-                    </Button>
-                  </div>
+                    <Zap className="mr-2 h-4 w-4" /> Auto Scout
+                  </Button>
+                </div>
               </div>
             </>
           )}
