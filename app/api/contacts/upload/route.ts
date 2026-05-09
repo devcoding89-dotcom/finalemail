@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     // Find relevant columns
     const headers = parseResult.meta.fields || []
-    const emailCol = findEmailColumn(headers)
+    const emailCol = findEmailColumn(headers, rows[0])
 
     if (!emailCol) {
       return NextResponse.json(

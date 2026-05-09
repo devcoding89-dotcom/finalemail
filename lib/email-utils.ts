@@ -63,15 +63,28 @@ export function guessCompanyFromEmail(email: string): string | null {
 }
 
 /**
- * Find the email column from CSV headers (case-insensitive).
+ * Find the email column from CSV headers (case-insensitive) or by scanning data.
  */
-export function findEmailColumn(headers: string[]): string | null {
-  const emailAliases = ['email', 'e-mail', 'email_address', 'emailaddress', 'mail', 'email address']
+export function findEmailColumn(headers: string[], sampleRow?: any): string | null {
+  const emailAliases = ['email', 'e-mail', 'email_address', 'emailaddress', 'mail', 'email address', 'contact email', 'recipient', 'to']
+  
+  // 1. Try exact or partial header match
   for (const header of headers) {
-    if (emailAliases.includes(header.trim().toLowerCase())) {
+    const h = header.trim().toLowerCase()
+    if (emailAliases.includes(h) || h.includes('email')) {
       return header
     }
   }
+
+  // 2. Fallback: Scan sample data for something that looks like an email
+  if (sampleRow) {
+    for (const [key, value] of Object.entries(sampleRow)) {
+      if (typeof value === 'string' && validateEmail(value)) {
+        return key
+      }
+    }
+  }
+
   return null
 }
 
