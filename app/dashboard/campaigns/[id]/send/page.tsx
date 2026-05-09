@@ -213,7 +213,7 @@ export default function CampaignSendPage() {
             </div>
           </div>
         </CardHeader>
-        
+        <CardContent className="p-6 pt-0 space-y-6">
           {/* Progress */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm font-medium">
