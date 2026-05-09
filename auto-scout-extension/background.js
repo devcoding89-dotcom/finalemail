@@ -49,23 +49,28 @@ async function processNextEmail() {
       email: contact.email 
     });
 
-    // Open Gmail Compose tab
-    // We pass the data via URL hash so the content script can read it easily
-    const composeUrl = `https://mail.google.com/mail/u/0/#inbox?compose=new`;
-    
-    chrome.tabs.create({ url: composeUrl, active: false }, (tab) => {
-      // Store data for the content script to use
-      chrome.storage.local.set({
+    // Reuse the existing tab if we have one, otherwise create a new one
+    chrome.storage.local.get(['lastTabId'], (result) => {
+      const composeUrl = `https://mail.google.com/mail/u/0/#inbox?compose=new`;
+      
+      const tabData = {
         pendingEmailData: {
           to: contact.email,
           subject: personalized.subject,
           body: personalized.body,
-          contactId: contact.id,
-          tabId: tab.id
+          contactId: contact.id
         }
-      });
-      
-      // The manifest handles injecting content.js
+      };
+
+      if (result.lastTabId) {
+        chrome.tabs.update(result.lastTabId, { url: composeUrl, active: true }, (tab) => {
+          chrome.storage.local.set(tabData);
+        });
+      } else {
+        chrome.tabs.create({ url: composeUrl, active: true }, (tab) => {
+          chrome.storage.local.set({ ...tabData, lastTabId: tab.id });
+        });
+      }
     });
 
   } catch (error) {

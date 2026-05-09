@@ -96,8 +96,8 @@ async function automateGmailCompose(data) {
       contactId: data.contactId
     });
 
-    // Close the tab
-    window.close();
+    // Keep tab open for the next one
+    // window.close();
 
   } catch (error) {
     console.error("Auto Scout Error:", error);
