@@ -86,6 +86,32 @@ export default function CampaignSendPage() {
     toast.success(`Switched to ${mode} mode`)
   }
 
+  const getPersonalizedData = (contact: Contact) => {
+    const template = campaign?.templates?.[0] || campaign?.templates
+    if (!contact || !template) return { subject: '', body: '' }
+
+    const contactName = contact.name || 'there'
+    const contactCompany = contact.company || 'your company'
+    
+    return {
+      subject: template.subject
+        .replace(/\{name\}/gi, contactName)
+        .replace(/\{company\}/gi, contactCompany),
+      body: template.body
+        .replace(/\{name\}/gi, contactName)
+        .replace(/\{company\}/gi, contactCompany)
+    }
+  }
+
+  const handleOpenGmail = (contactOverride?: Contact) => {
+    const targetContact = contactOverride || currentContact
+    if (!targetContact) return
+
+    const { subject, body } = getPersonalizedData(targetContact)
+    const mailtoLink = `mailto:${targetContact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    window.open(mailtoLink, '_blank')
+  }
+
   const handleMarkSent = async (status: 'sent' | 'failed') => {
     if (!campaign || !contacts[currentIndex]) return
 
@@ -100,7 +126,8 @@ export default function CampaignSendPage() {
       })
 
       if (res.ok) {
-        setCurrentIndex(prev => prev + 1)
+        const nextIndex = currentIndex + 1
+        setCurrentIndex(nextIndex)
         setCampaign(prev => prev ? { 
           ...prev, 
           sent_count: status === 'sent' ? prev.sent_count + 1 : prev.sent_count,
@@ -109,6 +136,11 @@ export default function CampaignSendPage() {
         
         if (status === 'sent') toast.success('Marked as sent!')
         else toast.info('Skipped contact.')
+
+        // AUTO-OPEN NEXT IN QUICK MODE
+        if (sendingMode === 'quick' && nextIndex < contacts.length) {
+          setTimeout(() => handleOpenGmail(contacts[nextIndex]), 500)
+        }
       } else {
         toast.error('Failed to update status')
       }
@@ -118,15 +150,10 @@ export default function CampaignSendPage() {
   }
 
   const handleCopyEmail = () => {
-    if (!personalizedBody) return
-    navigator.clipboard.writeText(personalizedBody)
+    const { body } = getPersonalizedData(currentContact!)
+    if (!body) return
+    navigator.clipboard.writeText(body)
     toast.success('Email copied to clipboard!')
-  }
-
-  const handleOpenGmail = () => {
-    if (!currentContact) return
-    const mailtoLink = `mailto:${currentContact.email}?subject=${encodeURIComponent(personalizedSubject)}&body=${encodeURIComponent(personalizedBody)}`
-    window.open(mailtoLink, '_blank')
   }
 
   if (loading) {
@@ -152,21 +179,7 @@ export default function CampaignSendPage() {
 
   const isComplete = currentIndex >= contacts.length
   const currentContact = isComplete ? null : contacts[currentIndex]
-  const template = campaign.templates?.[0] || campaign.templates
-
-  let personalizedSubject = ''
-  let personalizedBody = ''
-
-  if (currentContact && template) {
-    const contactName = currentContact.name || 'there'
-    const contactCompany = currentContact.company || 'your company'
-    personalizedSubject = template.subject
-      .replace(/\{name\}/gi, contactName)
-      .replace(/\{company\}/gi, contactCompany)
-    personalizedBody = template.body
-      .replace(/\{name\}/gi, contactName)
-      .replace(/\{company\}/gi, contactCompany)
-  }
+  const { subject: personalizedSubject, body: personalizedBody } = getPersonalizedData(currentContact!)
 
   const progressPct = contacts.length > 0 ? Math.round((currentIndex / contacts.length) * 100) : 0
 
@@ -289,7 +302,7 @@ export default function CampaignSendPage() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">After sending:</p>
                 <div className="flex gap-3">
                   <Button 
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
                     onClick={() => handleMarkSent('sent')}
                   >
                     <Check className="mr-2 h-4 w-4" /> Sent — Next
@@ -302,6 +315,15 @@ export default function CampaignSendPage() {
                     <X className="mr-2 h-4 w-4" /> Failed — Skip
                   </Button>
                 </div>
+                {sendingMode === 'quick' && currentIndex < contacts.length && (
+                  <Button 
+                    variant="secondary"
+                    className="w-full mt-3 bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 border-none"
+                    onClick={() => handleOpenGmail()}
+                  >
+                    <Zap className="mr-2 h-4 w-4" /> {currentIndex === 0 ? 'Start Quick Send' : 'Re-open Current Email'}
+                  </Button>
+                )}
               </div>
 
             </>
