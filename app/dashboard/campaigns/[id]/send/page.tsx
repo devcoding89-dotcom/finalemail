@@ -249,14 +249,21 @@ export default function CampaignSendPage() {
                       <Send className="mr-2 h-4 w-4" /> I Sent This ✓
                   </Button>
                   
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" className="h-10 text-[9px] font-black uppercase tracking-widest rounded-xl" onClick={handleMailto}>
-                        <ExternalLink className="mr-2 h-3 w-3" /> Quick Send
-                    </Button>
-                    <Button className="h-10 text-[9px] font-black uppercase tracking-widest rounded-xl bg-slate-900" onClick={() => setSendingMode('auto')}>
-                        <Zap className="mr-2 h-3 w-3 text-indigo-400" /> Auto Scout
-                    </Button>
-                  </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" className="h-10 text-[9px] font-black uppercase tracking-widest rounded-xl" onClick={handleMailto}>
+                          <ExternalLink className="mr-2 h-3 w-3" /> Quick Send
+                      </Button>
+                      <Button className="h-10 text-[9px] font-black uppercase tracking-widest rounded-xl bg-slate-900" onClick={() => setSendingMode('auto')}>
+                          <Zap className="mr-2 h-3 w-3 text-indigo-400" /> Auto Scout
+                      </Button>
+                    </div>
+
+                    <div className="pt-1">
+                      <Button variant="outline" disabled className="w-full h-10 text-[9px] font-black uppercase tracking-widest rounded-xl opacity-50 cursor-not-allowed bg-slate-50 border-dashed">
+                        Send 100 Emails (Resend) 
+                        <Badge className="ml-2 bg-amber-100 text-amber-700 text-[7px] border-none font-black px-2 h-4">COMING SOON</Badge>
+                      </Button>
+                    </div>
 
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                       <Button variant="ghost" className="h-8 text-[8px] font-black uppercase rounded-lg" onClick={handleCopy}>

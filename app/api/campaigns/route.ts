@@ -32,7 +32,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      campaigns: campaigns, // Match the expected format in campaigns/page.tsx
+      campaigns: campaigns,
     })
   } catch (error) {
     console.error('Campaigns fetch error:', error)
@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
+      console.error('CREATE_CAMPAIGN_ERROR:', error);
       return NextResponse.json(
         { success: false, error: error.message } satisfies ApiResponse,
         { status: 500 }
