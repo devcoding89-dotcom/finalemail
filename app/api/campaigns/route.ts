@@ -19,7 +19,7 @@ export async function GET() {
 
     const { data: campaigns, error } = await supabase
       .from('campaigns')
-      .select('*')
+      .select('*, lists(name), templates(name)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
@@ -32,8 +32,8 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: campaigns,
-    } satisfies ApiResponse<Campaign[]>)
+      campaigns: campaigns, // Match the expected format in campaigns/page.tsx
+    })
   } catch (error) {
     console.error('Campaigns fetch error:', error)
     return NextResponse.json(
