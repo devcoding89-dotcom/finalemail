@@ -273,7 +273,7 @@ export default function CampaignSendPage() {
                 <Button 
                   variant="outline"
                   className={`w-full ${sendingMode === 'quick' ? 'border-indigo-500 bg-indigo-500/10' : ''}`}
-                  onClick={handleOpenGmail}
+                  onClick={() => handleOpenGmail()}
                 >
                   <Mail className="mr-2 h-4 w-4" /> Open in Gmail
                 </Button>
