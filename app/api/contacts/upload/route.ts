@@ -52,6 +52,11 @@ export async function POST(request: NextRequest) {
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
       rows = XLSX.utils.sheet_to_json<CsvRow>(firstSheet)
       headers = Object.keys(rows[0] || {})
+    } else if (file.name.endsWith('.txt')) {
+      const text = await file.text()
+      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0)
+      rows = lines.map(line => ({ email: line.trim() }))
+      headers = ['email']
     } else {
       // Parse CSV with PapaParse
       const text = await file.text()

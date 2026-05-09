@@ -82,9 +82,10 @@ export default function ListsPage() {
     if (file) {
       const isCsv = file.name.endsWith('.csv')
       const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+      const isText = file.name.endsWith('.txt')
       
-      if (!isCsv && !isExcel) {
-        toast.error('Please select a CSV or Excel file')
+      if (!isCsv && !isExcel && !isText) {
+        toast.error('Please select a CSV, Excel, or Text file')
         return
       }
       setSelectedFile(file)
