@@ -11,6 +11,7 @@ import {
   findCompanyColumn,
 } from '@/lib/email-utils'
 import { extractContactInfo } from '@/lib/openai'
+import * as XLSX from 'xlsx'
 import type { ApiResponse, UploadResult, CsvRow } from '@/types'
 
 export async function POST(request: NextRequest) {
@@ -41,47 +42,46 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type
-    if (!file.name.endsWith('.csv') && !file.type.includes('csv')) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Only CSV files are supported',
-        } satisfies ApiResponse,
-        { status: 400 }
-      )
+    // Read and parse file content
+    let rows: CsvRow[] = []
+    let headers: string[] = []
+
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      const arrayBuffer = await file.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer)
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+      rows = XLSX.utils.sheet_to_json<CsvRow>(firstSheet)
+      headers = Object.keys(rows[0] || {})
+    } else {
+      // Parse CSV with PapaParse
+      const text = await file.text()
+      const parseResult = Papa.parse<CsvRow>(text, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header: string) => header.trim(),
+      })
+
+      if (parseResult.errors.length > 0 && parseResult.data.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `CSV parsing failed: ${parseResult.errors[0]?.message}`,
+          } satisfies ApiResponse,
+          { status: 400 }
+        )
+      }
+      rows = parseResult.data
+      headers = parseResult.meta.fields || []
     }
 
-    // Read file content
-    const text = await file.text()
-
-    // Parse CSV with PapaParse
-    const parseResult = Papa.parse<CsvRow>(text, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: (header: string) => header.trim(),
-    })
-
-    if (parseResult.errors.length > 0 && parseResult.data.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `CSV parsing failed: ${parseResult.errors[0]?.message}`,
-        } satisfies ApiResponse,
-        { status: 400 }
-      )
-    }
-
-    const rows = parseResult.data
     if (rows.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'CSV file is empty' } satisfies ApiResponse,
+        { success: false, error: 'File is empty' } satisfies ApiResponse,
         { status: 400 }
       )
     }
 
     // Find relevant columns
-    const headers = parseResult.meta.fields || []
     const emailCol = findEmailColumn(headers, rows[0])
 
     if (!emailCol) {

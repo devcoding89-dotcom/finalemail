@@ -80,13 +80,16 @@ export default function ListsPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (!file.name.endsWith('.csv')) {
-        toast.error('Please select a CSV file')
+      const isCsv = file.name.endsWith('.csv')
+      const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+      
+      if (!isCsv && !isExcel) {
+        toast.error('Please select a CSV or Excel file')
         return
       }
       setSelectedFile(file)
       if (!listName) {
-        setListName(file.name.replace('.csv', ''))
+        setListName(file.name.replace(/\.[^/.]+$/, ""))
       }
     }
   }
@@ -192,7 +195,7 @@ export default function ListsPage() {
               id="upload-contacts-btn"
             >
               <Upload className="mr-2 h-4 w-4" />
-              Upload <span className="hidden md:inline ml-1">CSV</span>
+              Upload <span className="hidden md:inline ml-1">File</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
@@ -202,7 +205,7 @@ export default function ListsPage() {
                 Upload Contact List
               </DialogTitle>
               <DialogDescription>
-                Upload a CSV file with an &quot;email&quot; column.
+                Upload a CSV or Excel file with an &quot;email&quot; column.
               </DialogDescription>
             </DialogHeader>
 
@@ -220,11 +223,11 @@ export default function ListsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="csv-file">CSV File</Label>
+                  <Label htmlFor="csv-file">File (CSV or Excel)</Label>
                   <Input
                     id="csv-file"
                     type="file"
-                    accept=".csv"
+                    accept=".csv,.xlsx,.xls"
                     onChange={handleFileSelect}
                     disabled={uploading}
                     className="file:bg-indigo-50 file:text-indigo-700"
