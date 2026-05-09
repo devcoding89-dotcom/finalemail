@@ -205,7 +205,8 @@ export default function ListsPage() {
                 Upload Contact List
               </DialogTitle>
               <DialogDescription>
-                Upload a CSV or Excel file with an &quot;email&quot; column.
+                Upload a CSV, Excel (.xlsx), or Text (.txt) file. 
+                <span className="block mt-1 text-[10px] text-slate-400">Tip: For Word docs, copy the list into a Text file first.</span>
               </DialogDescription>
             </DialogHeader>
 
@@ -223,11 +224,11 @@ export default function ListsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="csv-file">File (CSV or Excel)</Label>
+                  <Label htmlFor="csv-file">File (CSV, Excel, or Text)</Label>
                   <Input
                     id="csv-file"
                     type="file"
-                    accept=".csv,.xlsx,.xls"
+                    accept=".csv,.xlsx,.xls,.txt"
                     onChange={handleFileSelect}
                     disabled={uploading}
                     className="file:bg-indigo-50 file:text-indigo-700"
