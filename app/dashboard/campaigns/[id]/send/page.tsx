@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { 
   Mail, Copy, ExternalLink, CheckCircle2, 
-  SkipForward, Ban, ArrowLeft, Send, Loader2, Building, User
+  SkipForward, Ban, ArrowLeft, Send, Loader2, Building, User, Zap
 } from 'lucide-react';
 
 export default function CampaignSendPage() {
