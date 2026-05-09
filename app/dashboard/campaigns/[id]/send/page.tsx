@@ -115,6 +115,12 @@ export default function CampaignSendPage() {
   const handleMarkSent = async (status: 'sent' | 'failed') => {
     if (!campaign || !contacts[currentIndex]) return
 
+    // INSTANTLY OPEN NEXT IN QUICK MODE (to avoid popup blocker)
+    const nextIndex = currentIndex + 1
+    if (sendingMode === 'quick' && nextIndex < contacts.length) {
+      handleOpenGmail(contacts[nextIndex])
+    }
+
     try {
       const res = await fetch(`/api/campaigns/${campaignId}/mark-sent`, {
         method: 'POST',
@@ -126,7 +132,6 @@ export default function CampaignSendPage() {
       })
 
       if (res.ok) {
-        const nextIndex = currentIndex + 1
         setCurrentIndex(nextIndex)
         setCampaign(prev => prev ? { 
           ...prev, 
@@ -136,11 +141,6 @@ export default function CampaignSendPage() {
         
         if (status === 'sent') toast.success('Marked as sent!')
         else toast.info('Skipped contact.')
-
-        // AUTO-OPEN NEXT IN QUICK MODE
-        if (sendingMode === 'quick' && nextIndex < contacts.length) {
-          setTimeout(() => handleOpenGmail(contacts[nextIndex]), 500)
-        }
       } else {
         toast.error('Failed to update status')
       }
