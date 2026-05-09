@@ -142,7 +142,7 @@ export default function CampaignSendPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-3xl font-black italic uppercase tracking-tighter">Manual Outreach</h1>
+          <h1 className="text-2xl font-black italic uppercase tracking-tighter">Manual Outreach</h1>
           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">
             Contact {progress?.current} of {progress?.total} • {progress?.remaining} remaining
           </p>
@@ -172,7 +172,7 @@ export default function CampaignSendPage() {
                         {data?.contact?.name?.charAt(0) || data?.contact?.email?.charAt(0) || '?'}
                     </div>
                     <div className="space-y-1">
-                        <p className="font-black text-2xl tracking-tight">{data?.contact?.name || 'Unknown'}</p>
+                        <p className="font-black text-lg tracking-tight">{data?.contact?.name || 'Unknown'}</p>
                         <div className="flex items-center gap-4 text-sm font-bold">
                             <span className="text-indigo-600">{data?.contact?.email}</span>
                             {data?.contact?.company && (
