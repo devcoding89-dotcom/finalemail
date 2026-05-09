@@ -214,13 +214,17 @@ export default function CampaignSendPage() {
           </div>
         </CardHeader>
         
-        <CardContent className="pt-6 space-y-6">
           {/* Progress */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm font-medium">
               <span>Progress: {currentIndex} / {contacts.length} sent</span>
-        <CardContent className="p-6">
-          {sendingMode === 'auto' ? (
+              <span className="text-indigo-500">{progressPct}%</span>
+            </div>
+            <Progress value={progressPct} className="h-2 rounded-full" />
+          </div>
+
+          <div className="pt-4 border-t border-white/5">
+            {sendingMode === 'auto' ? (
             /* MODE 3: Auto Scout Active State */
             <div className="space-y-6 animate-in fade-in duration-500">
               <div className="flex items-center justify-between p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-500/30">
