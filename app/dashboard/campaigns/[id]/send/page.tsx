@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Copy, Mail, Zap, Check, X, Pause, RefreshCw, ArrowLeft, User, Building } from 'lucide-react'
+import { Copy, Mail, Zap, Check, X, Pause, RefreshCw, ArrowLeft, ArrowRight, User, Building } from 'lucide-react'
 import Link from 'next/link'
 
 interface CampaignDetail {
