@@ -268,16 +268,19 @@ export default function CampaignSendPage() {
                 <Button 
                     className="w-full h-16 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black text-xl shadow-xl shadow-indigo-500/30 group animate-in zoom-in-95 duration-300"
                     onClick={() => {
-                      if (currentIndex === 0 && !sendingMode) {
-                        handleOpenGmail();
-                        setSendingMode('manual');
-                      } else {
+                      // 1. Open the current contact in Gmail
+                      handleOpenGmail();
+                      
+                      // 2. Mark as sent and move to next (if we've actually started)
+                      if (currentIndex < contacts.length) {
                         handleMarkSent('sent');
                       }
+                      
+                      setSendingMode('manual');
                     }}
                     id="primary-action-btn"
                   >
-                    {currentIndex === 0 && !sendingMode ? '🚀 START SENDING' : '✅ SENT — NEXT CONTACT'}
+                    {currentIndex === 0 && !sendingMode ? '🚀 START CAMPAIGN' : '📨 OPEN & SEND NEXT'}
                     <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
                   </Button>
 
