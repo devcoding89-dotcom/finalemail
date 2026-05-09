@@ -88,8 +88,9 @@ export async function POST(request: NextRequest) {
         name: body.name.trim(),
         list_id: body.list_id,
         template_id: body.template_id,
-        total_emails: count || 0,
+        total_count: count || 0,
         sent_count: 0,
+        current_index: 0,
         status: 'draft',
       })
       .select()

@@ -1,373 +1,297 @@
-'use client'
+'use client';
 
-import { useState, useCallback, useEffect } from 'react'
-import { useParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { toast } from 'sonner'
-import { Copy, Mail, Zap, Check, X, Pause, RefreshCw, ArrowLeft, ArrowRight, User, Building } from 'lucide-react'
-import Link from 'next/link'
-
-interface CampaignDetail {
-  id: string
-  name: string
-  status: string
-  total_emails: number
-  sent_count: number
-  list_id: string
-  current_index: number
-  sending_mode: 'manual' | 'quick' | 'auto'
-  templates: {
-    subject: string
-    body: string
-  }[] | any
-}
-
-interface Contact {
-  id: string
-  email: string
-  name: string
-  company: string
-  status: string
-}
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
+import { 
+  Mail, Copy, ExternalLink, CheckCircle2, 
+  SkipForward, Ban, ArrowLeft, Send, Loader2, Building, User
+} from 'lucide-react';
 
 export default function CampaignSendPage() {
-  const params = useParams()
-  const campaignId = params.id as string
+  const { id } = useParams();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+  const [complete, setComplete] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const [loading, setLoading] = useState(true)
-  const [sendingMode, setSendingMode] = useState<'manual' | 'quick' | 'auto'>('manual')
-  const [currentIndex, setCurrentIndex] = useState(0)
-
-  const fetchCampaignData = useCallback(async () => {
+  const loadNext = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true)
-      const campaignRes = await fetch('/api/campaigns')
-      const campaignJson = await campaignRes.json()
-      
-      if (campaignJson.success) {
-        const found = campaignJson.data.find((c: CampaignDetail) => c.id === campaignId)
-        if (found) {
-          setCampaign(found)
-          setSendingMode(found.sending_mode || 'manual')
-          setCurrentIndex(found.current_index || 0)
+      const res = await fetch(`/api/campaigns/${id}/next`);
+      const result = await res.json();
 
-          const contactsRes = await fetch(`/api/contacts?listId=${found.list_id}`)
-          const contactsJson = await contactsRes.json()
-          if (contactsJson.success) {
-            setContacts(
-              contactsJson.data
-                .filter((c: Contact) => c.status !== 'invalid' && c.status !== 'bounced')
-                .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-            )
-          }
-        }
+      if (result.complete) {
+        setComplete(true);
+        setData(result.stats);
+      } else {
+        setData(result);
       }
-    } catch {
-      toast.error('Failed to load campaign data')
-    } finally {
-      setLoading(false)
+    } catch (error) {
+      toast.error('Failed to load contact');
     }
-  }, [campaignId])
+    setLoading(false);
+  }, [id]);
 
   useEffect(() => {
-    fetchCampaignData()
-  }, [fetchCampaignData])
+    loadNext();
+  }, [loadNext]);
 
-  const handleUpdateMode = async (mode: 'manual' | 'quick' | 'auto') => {
-    setSendingMode(mode)
-    toast.success(`Switched to ${mode} mode`)
-  }
+  const handleCopy = async () => {
+    if (!data?.email) return;
+    const text = `${data.email.bodyText}`;
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success('Copied! Paste into your email app');
+  };
 
-  const getPersonalizedData = (contact: Contact) => {
-    const template = campaign?.templates?.[0] || campaign?.templates
-    if (!contact || !template) return { subject: '', body: '' }
+  const handleMailto = () => {
+    if (!data?.email?.mailtoLink) return;
+    window.open(data.email.mailtoLink, '_blank');
+    toast.info('Email app opened. Send it, then come back!');
+  };
 
-    const contactName = contact.name || 'there'
-    const contactCompany = contact.company || 'your company'
-    
-    return {
-      subject: template.subject
-        .replace(/\{name\}/gi, contactName)
-        .replace(/\{company\}/gi, contactCompany),
-      body: template.body
-        .replace(/\{name\}/gi, contactName)
-        .replace(/\{company\}/gi, contactCompany)
-    }
-  }
-
-  const handleOpenGmail = (contactOverride?: Contact) => {
-    const targetContact = contactOverride || currentContact
-    if (!targetContact) return
-
-    const { subject, body } = getPersonalizedData(targetContact)
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetContact.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    window.open(gmailUrl, 'emailll_target')
-  }
-
-  const handleMarkSent = async (status: 'sent' | 'failed') => {
-    if (!campaign || !contacts[currentIndex]) return
-
-    const nextIndex = currentIndex + 1
-    if (sendingMode === 'quick' && nextIndex < contacts.length) {
-      handleOpenGmail(contacts[nextIndex])
-    }
+  const handleAction = async (action: 'sent' | 'skipped' | 'bounced') => {
+    if (!data?.contact) return;
+    setActionLoading(true);
 
     try {
-      const res = await fetch(`/api/campaigns/${campaignId}/mark-sent`, {
+      const res = await fetch(`/api/campaigns/${id}/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          contactId: contacts[currentIndex].id,
-          method: sendingMode
+        body: JSON.stringify({
+          action,
+          contactId: data.contact.id,
         }),
-      })
+      });
 
-      if (res.ok) {
-        setCurrentIndex(nextIndex)
-        setCampaign(prev => prev ? { 
-          ...prev, 
-          sent_count: status === 'sent' ? prev.sent_count + 1 : prev.sent_count,
-          current_index: prev.current_index + 1
-        } : prev)
-        
-        if (status === 'sent') toast.success('Marked as sent!')
-        else toast.info('Skipped contact.')
-      } else {
-        toast.error('Failed to update status')
+      const result = await res.json();
+      if (result.success) {
+        if (action === 'sent') toast.success('Marked sent! Loading next...');
+        if (action === 'skipped') toast.info('Skipped. Next...');
+        if (action === 'bounced') toast.error('Marked bounced. Next...');
+        loadNext();
       }
-    } catch {
-      toast.error('Network error')
+    } catch (error) {
+      toast.error('Failed to save');
     }
-  }
-
-  const handleCopyEmail = () => {
-    const { body } = getPersonalizedData(currentContact!)
-    if (!body) return
-    navigator.clipboard.writeText(body)
-    toast.success('Email copied to clipboard!')
-  }
+    setActionLoading(false);
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
+        <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
+            <p className="font-black italic uppercase tracking-widest text-[10px] animate-pulse">Loading Next Contact...</p>
+        </div>
       </div>
-    )
+    );
   }
 
-  if (!campaign || contacts.length === 0) {
+  if (complete) {
     return (
-      <div className="text-center py-20">
-        <p className="text-muted-foreground">Campaign not found or no contacts.</p>
-        <Link href="/dashboard/campaigns">
-          <Button variant="outline" className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Campaigns
+      <div className="max-w-xl mx-auto py-20 text-center space-y-8 animate-in zoom-in-95 duration-500">
+        <div className="h-24 w-24 bg-emerald-100 dark:bg-emerald-950/40 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/20">
+            <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+        </div>
+        <div>
+            <h2 className="text-4xl font-black italic uppercase tracking-tighter">Campaign Complete!</h2>
+            <p className="text-muted-foreground mt-2 font-medium">
+              Excellent work. You processed {data?.total} contacts.
+            </p>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
+            <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total</p>
+                <p className="text-2xl font-black">{data?.total}</p>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/50">
+                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Sent</p>
+                <p className="text-2xl font-black text-emerald-700">{data?.sent}</p>
+            </div>
+        </div>
+
+        <div className="flex gap-4 justify-center">
+          <Button onClick={() => router.push('/dashboard/campaigns')} className="bg-indigo-600 hover:bg-indigo-500 font-bold px-8 h-12 rounded-xl">
+            View Campaigns
           </Button>
-        </Link>
+          <Button variant="outline" onClick={() => router.push('/dashboard/analytics')} className="font-bold px-8 h-12 rounded-xl">
+            Analytics
+          </Button>
+        </div>
       </div>
-    )
+    );
   }
 
-  const isComplete = currentIndex >= contacts.length
-  const currentContact = isComplete ? null : contacts[currentIndex]
-  const { subject: personalizedSubject, body: personalizedBody } = getPersonalizedData(currentContact!)
-  const progressPct = contacts.length > 0 ? Math.round((currentIndex / contacts.length) * 100) : 0
+  const progress = data?.progress;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <Link href="/dashboard/campaigns">
-          <Button variant="ghost" size="sm" className="text-muted-foreground">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
-        </Link>
-        <h1 className="text-xl font-bold truncate max-w-[200px]">{campaign.name}</h1>
+    <div className="max-w-3xl mx-auto py-8 px-4 space-y-8 animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="flex items-center gap-6">
+        <Button variant="outline" size="icon" onClick={() => router.push('/dashboard/campaigns')} className="h-12 w-12 rounded-2xl shadow-sm">
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-3xl font-black italic uppercase tracking-tighter">Manual Outreach</h1>
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+            Contact {progress?.current} of {progress?.total} • {progress?.remaining} remaining
+          </p>
+        </div>
+        <div className="bg-indigo-600 text-white px-6 py-2 rounded-2xl font-black italic shadow-lg shadow-indigo-500/30">
+          {progress?.sent} SENT
+        </div>
       </div>
 
-      <Card className="border-indigo-500/20 shadow-xl dark:bg-slate-900/50">
-        <CardHeader className="pb-4 border-b border-white/5">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Sending Controls</CardTitle>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Mode:</span>
-              <Select value={sendingMode} onValueChange={(val: any) => handleUpdateMode(val)}>
-                <SelectTrigger className="w-[140px] h-8 text-xs bg-slate-100 dark:bg-slate-800 border-none">
-                  <SelectValue placeholder="Select Mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Manual</SelectItem>
-                  <SelectItem value="quick">Quick Send</SelectItem>
-                  <SelectItem value="auto">Auto Scout</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="p-6 pt-0 space-y-6">
-          {/* Progress */}
-          <div className="space-y-2 mt-6">
-            <div className="flex justify-between text-sm font-medium">
-              <span>Progress: {currentIndex} / {contacts.length} sent</span>
-              <span className="text-indigo-500">{progressPct}%</span>
-            </div>
-            <Progress value={progressPct} className="h-2 rounded-full" />
-          </div>
+      {/* Progress Bar */}
+      <div className="space-y-2">
+        <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <span>Progress</span>
+            <span>{Math.round(((progress?.current || 0) / (progress?.total || 1)) * 100)}%</span>
+        </div>
+        <Progress value={((progress?.current || 0) / (progress?.total || 1)) * 100} className="h-3 rounded-full" />
+      </div>
 
-          <div className="pt-4 border-t border-white/5">
-            {sendingMode === 'auto' ? (
-              /* MODE 3: Auto Scout Active State */
-              <div className="space-y-6 animate-in fade-in duration-500">
-                <div className="flex items-center justify-between p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-500/30">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
-                      <Zap className="h-6 w-6" />
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        {/* Left Col: Info & Preview */}
+        <div className="lg:col-span-3 space-y-6">
+            {/* Contact Info */}
+            <Card className="bg-slate-50 dark:bg-slate-900 border-none shadow-sm rounded-3xl overflow-hidden">
+                <CardContent className="p-8 flex items-center gap-6">
+                    <div className="h-16 w-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl font-black italic shadow-xl shadow-indigo-500/20">
+                        {data?.contact?.name?.charAt(0) || data?.contact?.email?.charAt(0) || '?'}
+                    </div>
+                    <div className="space-y-1">
+                        <p className="font-black text-2xl tracking-tight">{data?.contact?.name || 'Unknown'}</p>
+                        <div className="flex items-center gap-4 text-sm font-bold">
+                            <span className="text-indigo-600">{data?.contact?.email}</span>
+                            {data?.contact?.company && (
+                            <span className="flex items-center gap-1.5 text-slate-400 uppercase tracking-widest text-[10px]">
+                                <Building className="h-3 w-3" /> {data?.contact?.company}
+                            </span>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Email Preview */}
+            <Card className="border-slate-200 dark:border-slate-800 shadow-xl rounded-3xl overflow-hidden border-2">
+                <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
+                    <CardTitle className="flex items-center gap-3 text-sm font-black uppercase tracking-widest">
+                        <Mail className="h-4 w-4 text-indigo-600" />
+                        Generated Email
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6">
+                    <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Subject</label>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl font-bold text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
+                            {data?.email?.subject}
+                        </div>
                     </div>
                     <div>
-                      <h3 className="font-black italic uppercase tracking-wider">Auto Scout Running...</h3>
-                      <p className="text-[10px] text-indigo-100 font-bold uppercase">{currentContact?.email}</p>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Personalized Body</label>
+                        <div 
+                            className="p-6 bg-white dark:bg-black rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 leading-relaxed text-sm whitespace-pre-wrap min-h-[200px]"
+                        >
+                            {data?.email?.bodyText}
+                        </div>
                     </div>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-white hover:bg-white/10 font-bold"
-                    onClick={() => setSendingMode('manual')}
-                  >
-                    <Pause className="mr-2 h-4 w-4" /> PAUSE
-                  </Button>
-                </div>
+                </CardContent>
+            </Card>
+        </div>
 
-                <div className="space-y-4 p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 text-sm font-bold text-slate-600">
-                      <div className="h-2 w-2 bg-emerald-500 rounded-full" />
-                      [Opening Gmail...]
-                    </div>
-                    <div className="flex items-center gap-3 text-sm font-bold text-slate-600">
-                      <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-                      [Filling email...]
-                    </div>
-                    <div className="flex items-center gap-3 text-sm font-bold text-slate-400">
-                      <div className="h-2 w-2 bg-slate-300 rounded-full" />
-                      [Clicking send...]
-                    </div>
-                    <div className="flex items-center gap-3 text-sm font-bold text-slate-400">
-                      <div className="h-2 w-2 bg-slate-300 rounded-full" />
-                      [Waiting for confirmation...]
-                    </div>
-                  </div>
-
-                  <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
-                    <div className="flex justify-between text-[10px] font-black text-slate-500 uppercase mb-2">
-                      <span>Progress: {currentIndex} / {contacts.length}</span>
-                      <span className="text-indigo-600">{Math.round((currentIndex / contacts.length) * 100)}%</span>
-                    </div>
-                    <Progress value={(currentIndex / contacts.length) * 100} className="h-3 rounded-full" />
-                  </div>
-                </div>
-                
-                <div className="flex justify-center">
-                  <Select defaultValue="normal">
-                    <SelectTrigger className="w-[180px] h-10 font-bold uppercase text-[10px]">
-                      <Zap className="mr-2 h-3 w-3 text-indigo-500" />
-                      <SelectValue placeholder="Speed" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fast">⚡ Speed: Fast</SelectItem>
-                      <SelectItem value="normal">⚡ Speed: Normal</SelectItem>
-                      <SelectItem value="slow">⚡ Speed: Slow</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            ) : (
-              /* MODE 1 & 2: Manual / Quick Send UI */
-              <>
-                {/* Progress & Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Manual Outreach</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-black">{currentIndex + 1}</span>
-                      <span className="text-slate-300 font-bold">/</span>
-                      <span className="text-slate-400 font-bold">{contacts.length}</span>
-                    </div>
-                  </div>
-                  <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                     <User className="h-6 w-6 text-indigo-600" />
-                  </div>
-                </div>
-
-                {/* Contact Info Card */}
-                <div className="bg-slate-50 dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4 mb-6">
-                  <div className="flex flex-col gap-1">
-                     <div className="text-xl font-black tracking-tight">{currentContact?.name || 'Unknown Contact'}</div>
-                     <div className="flex items-center gap-2 text-indigo-600 text-sm font-bold">
-                       <Mail className="h-3.5 w-3.5" />
-                       {currentContact?.email}
-                     </div>
-                     <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase mt-1">
-                       <Building className="h-3.5 w-3.5" />
-                       {currentContact?.company || 'No Company'}
-                     </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Personalized Message:</p>
-                     <div className="p-4 bg-white dark:bg-black rounded-2xl border border-slate-100 dark:border-slate-800 text-sm leading-relaxed min-h-[100px] whitespace-pre-wrap">
-                        {personalizedBody}
-                     </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <Button 
-                      className="w-full h-16 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black text-xl shadow-xl shadow-indigo-500/30 group animate-in zoom-in-95 duration-300"
-                      onClick={() => {
-                        handleOpenGmail();
-                        handleMarkSent('sent');
-                      }}
-                      id="primary-action-btn"
-                    >
-                      📨 OPEN & SEND NEXT
-                      <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
+        {/* Right Col: Actions & Instructions */}
+        <div className="lg:col-span-2 space-y-6">
+            {/* Action Grid */}
+            <div className="space-y-4">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 text-center">Step 1: Get the Email</p>
+                <div className="grid grid-cols-1 gap-3">
+                    <Button variant="outline" className="w-full h-16 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50" onClick={handleCopy}>
+                        {copied ? <CheckCircle2 className="mr-2 h-5 w-5 text-emerald-500" /> : <Copy className="mr-2 h-5 w-5 text-indigo-500" />}
+                        {copied ? 'Copied Content!' : 'Copy Body Content'}
                     </Button>
+                    
+                    <Button className="w-full h-16 text-sm font-black uppercase tracking-widest rounded-2xl bg-slate-900 hover:bg-black text-white shadow-xl shadow-black/10" onClick={handleMailto}>
+                        <ExternalLink className="mr-2 h-5 w-5 text-indigo-400" />
+                        Open Gmail Compose
+                    </Button>
+                </div>
 
-                    <div className="grid grid-cols-3 gap-3">
-                      <Button 
-                        variant="outline"
-                        className="h-12 text-[10px] font-bold uppercase rounded-2xl"
-                        onClick={handleCopyEmail}
-                      >
-                        <Copy className="mr-2 h-4 w-4" /> Copy
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        className="h-12 text-[10px] font-bold uppercase rounded-2xl"
-                        onClick={() => handleOpenGmail()}
-                      >
-                        <Mail className="mr-2 h-4 w-4" /> Mailto
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        className="h-12 text-[10px] font-bold uppercase rounded-2xl bg-indigo-50 text-indigo-600 border-indigo-100"
-                        onClick={() => setSendingMode('auto')}
-                      >
-                        <Zap className="mr-2 h-4 w-4" /> Auto Scout
-                      </Button>
+                <div className="pt-8 space-y-3">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 text-center">Step 2: Mark Progress</p>
+                    <Button 
+                        className="w-full h-20 text-lg font-black uppercase tracking-widest rounded-3xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xl shadow-indigo-500/40 group"
+                        onClick={() => handleAction('sent')}
+                        disabled={actionLoading}
+                    >
+                        {actionLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (
+                            <>
+                                <Send className="mr-3 h-6 w-6 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                I Sent This ✓
+                            </>
+                        )}
+                    </Button>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                        <Button 
+                            variant="outline" 
+                            className="h-12 font-bold uppercase text-[10px] rounded-xl"
+                            onClick={() => handleAction('skipped')}
+                            disabled={actionLoading}
+                        >
+                            <SkipForward className="mr-2 h-4 w-4" />
+                            Skip
+                        </Button>
+                        
+                        <Button 
+                            variant="ghost" 
+                            className="h-12 font-bold uppercase text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl"
+                            onClick={() => handleAction('bounced')}
+                            disabled={actionLoading}
+                        >
+                            <Ban className="mr-2 h-4 w-4" />
+                            Bounced
+                        </Button>
                     </div>
                 </div>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+
+            {/* Instructions */}
+            <Card className="bg-indigo-50 dark:bg-indigo-950/20 border-none rounded-3xl p-2">
+                <CardContent className="p-6">
+                    <h3 className="font-black italic uppercase tracking-widest text-[10px] text-indigo-600 mb-4 flex items-center gap-2">
+                        <Zap className="h-3 w-3" /> Quick Instructions:
+                    </h3>
+                    <ul className="space-y-4">
+                        <li className="flex items-start gap-4">
+                            <span className="bg-indigo-600 text-white rounded-full h-6 w-6 flex items-center justify-center text-[10px] font-black shrink-0 shadow-lg shadow-indigo-500/20">1</span>
+                            <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-tight">Click <strong>"Open Gmail"</strong> to start a new message.</p>
+                        </li>
+                        <li className="flex items-start gap-4">
+                            <span className="bg-indigo-600 text-white rounded-full h-6 w-6 flex items-center justify-center text-[10px] font-black shrink-0 shadow-lg shadow-indigo-500/20">2</span>
+                            <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-tight">Paste the content and hit <strong>Send</strong> in Gmail.</p>
+                        </li>
+                        <li className="flex items-start gap-4">
+                            <span className="bg-indigo-600 text-white rounded-full h-6 w-6 flex items-center justify-center text-[10px] font-black shrink-0 shadow-lg shadow-indigo-500/20">3</span>
+                            <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-tight">Click <strong>"I Sent This"</strong> to load the next person.</p>
+                        </li>
+                    </ul>
+                </CardContent>
+            </Card>
+        </div>
+      </div>
     </div>
-  )
+  );
 }

@@ -77,8 +77,10 @@ export interface Campaign {
   template_id: string
   name: string
   status: CampaignStatus
-  total_emails: number
+  current_index: number
+  total_count: number
   sent_count: number
+  skipped_count: number
   open_count: number
   click_count: number
   bounce_count: number
