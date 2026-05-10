@@ -6,6 +6,7 @@ const schema = z.object({
   action: z.enum(['sent', 'skipped', 'bounced']),
   contactId: z.string().uuid(),
   notes: z.string().optional(),
+  jumpToIndex: z.number().optional(),
 });
 
 export async function POST(
@@ -18,7 +19,7 @@ export async function POST(
 
   const { id } = await params;
   const body = await request.json();
-  const { action, contactId, notes } = schema.parse(body);
+  const { action, contactId, notes, jumpToIndex } = schema.parse(body);
 
   // Verify campaign belongs to user
   const { data: campaign } = await supabase
@@ -29,6 +30,12 @@ export async function POST(
     .single();
 
   if (!campaign) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  // If jumping, just update index and return
+  if (typeof jumpToIndex === 'number') {
+    await supabase.from('campaigns').update({ current_index: jumpToIndex }).eq('id', id);
+    return NextResponse.json({ success: true });
+  }
 
   // Record history
   // Note: we'll use email_logs as our history table since it already exists

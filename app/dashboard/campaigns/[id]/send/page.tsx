@@ -175,10 +175,41 @@ export default function CampaignSendPage() {
       {/* Progress Bar */}
       <div className="space-y-1">
         <div className="flex justify-between text-[8px] font-black text-slate-400 uppercase tracking-widest">
-            <span>Progress</span>
+            <span>Progress Bar</span>
             <span>{Math.round(((progress?.current || 0) / (progress?.total || 1)) * 100)}%</span>
         </div>
         <Progress value={((progress?.current || 0) / (progress?.total || 1)) * 100} className="h-2 rounded-full" />
+      </div>
+
+      {/* Contact Navigator */}
+      <div className="space-y-2">
+        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">Jump to Contact</p>
+        <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
+            {Array.from({ length: progress?.total || 0 }).map((_, i) => (
+                <button
+                    key={i}
+                    onClick={async () => {
+                        // We need to update current_index in DB then reload
+                        setLoading(true);
+                        await fetch(`/api/campaigns/${id}/action`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'skipped', contactId: data.contact.id, jumpToIndex: i }),
+                        });
+                        loadNext();
+                    }}
+                    className={`h-7 w-7 rounded-lg text-[9px] font-black flex-shrink-0 transition-all ${
+                        (i + 1) === progress?.current 
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 scale-110' 
+                        : (i + 1) < progress?.current 
+                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/20' 
+                        : 'bg-slate-100 text-slate-400 dark:bg-slate-900'
+                    }`}
+                >
+                    {i + 1}
+                </button>
+            ))}
+        </div>
       </div>
 
       {/* Main Content */}
