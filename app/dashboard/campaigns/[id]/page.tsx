@@ -21,10 +21,18 @@ export default function CampaignDetailPage() {
   useEffect(() => {
     fetch(`/api/campaigns`)
       .then(r => r.json())
-      .then(data => {
+      .then(async data => {
         if (data.success) {
           const c = data.campaigns.find((item: any) => item.id === id);
-          setCampaign(c);
+          if (c) {
+            // Fetch contacts for this list
+            const contactsRes = await fetch(`/api/lists/${c.list_id}/contacts`);
+            const contactsData = await contactsRes.json();
+            if (contactsData.success) {
+              c.contacts = contactsData.contacts || contactsData.data;
+            }
+            setCampaign(c);
+          }
         }
         setLoading(false);
       });
@@ -81,50 +89,93 @@ export default function CampaignDetailPage() {
       </div>
 
       {/* Action Selection */}
-      <div className="space-y-6">
-          <h2 className="text-sm font-black italic uppercase tracking-widest text-slate-400 px-2">Choose Sending Mode</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Manual Mode - ACTIVE */}
-              <Card className="group relative overflow-hidden rounded-[2.5rem] border-2 border-indigo-500/20 hover:border-indigo-500 transition-all shadow-xl hover:shadow-indigo-500/10 cursor-pointer" 
-                    onClick={() => router.push(`/dashboard/campaigns/${id}/send`)}>
-                  <CardContent className="p-10 space-y-6">
-                      <div className="h-16 w-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
-                          <Send className="h-8 w-8" />
-                      </div>
-                      <div className="space-y-2">
-                          <h3 className="text-2xl font-black italic uppercase tracking-tighter">Manual Outreach</h3>
-                          <p className="text-sm font-medium text-slate-500 leading-relaxed">
-                              Perfect for high-conversion. Copy, open in Gmail, and track progress contact by contact.
-                          </p>
-                      </div>
-                      <Button className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-black italic uppercase tracking-widest rounded-2xl">
-                          Start Sending <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                  </CardContent>
-              </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Manual Mode - ACTIVE */}
+          <Card className="group relative overflow-hidden rounded-[2.5rem] border-2 border-indigo-500/20 hover:border-indigo-500 transition-all shadow-xl hover:shadow-indigo-500/10 cursor-pointer" 
+                onClick={() => router.push(`/dashboard/campaigns/${id}/send`)}>
+              <CardContent className="p-10 space-y-6">
+                  <div className="h-16 w-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
+                      <Send className="h-8 w-8" />
+                  </div>
+                  <div className="space-y-2">
+                      <h3 className="text-2xl font-black italic uppercase tracking-tighter">Manual Outreach</h3>
+                      <p className="text-sm font-medium text-slate-500 leading-relaxed">
+                          Perfect for high-conversion. Copy, open in Gmail, and track progress contact by contact.
+                      </p>
+                  </div>
+                  <Button className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-black italic uppercase tracking-widest rounded-2xl">
+                      Start Sending <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+              </CardContent>
+          </Card>
 
-              {/* Bulk Mode - COMING SOON */}
-              <Card className="group relative overflow-hidden rounded-[2.5rem] border-2 border-slate-100 dark:border-slate-800 opacity-70 grayscale-[0.5]">
-                  <Badge className="absolute top-6 right-6 bg-amber-100 text-amber-700 font-black italic tracking-widest px-4 py-1 rounded-full border-none">
-                      COMING SOON
-                  </Badge>
-                  <CardContent className="p-10 space-y-6">
-                      <div className="h-16 w-16 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
-                          <Zap className="h-8 w-8" />
-                      </div>
-                      <div className="space-y-2">
-                          <h3 className="text-2xl font-black italic uppercase tracking-tighter text-slate-400">Bulk Send 1000</h3>
-                          <p className="text-sm font-medium text-slate-400 leading-relaxed">
-                              Send hundreds of emails instantly via Resend API. High speed automation for large lists.
-                          </p>
-                      </div>
-                      <Button disabled className="w-full h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 font-black italic uppercase tracking-widest rounded-2xl">
-                          Locked <Clock className="ml-2 h-4 w-4" />
-                      </Button>
-                  </CardContent>
-              </Card>
+          {/* Bulk Mode - COMING SOON */}
+          <Card className="group relative overflow-hidden rounded-[2.5rem] border-2 border-slate-100 dark:border-slate-800 opacity-70 grayscale-[0.5]">
+              <Badge className="absolute top-6 right-6 bg-amber-100 text-amber-700 font-black italic tracking-widest px-4 py-1 rounded-full border-none">
+                  COMING SOON
+              </Badge>
+              <CardContent className="p-10 space-y-6">
+                  <div className="h-16 w-16 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+                      <Zap className="h-8 w-8" />
+                  </div>
+                  <div className="space-y-2">
+                      <h3 className="text-2xl font-black italic uppercase tracking-tighter text-slate-400">Bulk Send 1000</h3>
+                      <p className="text-sm font-medium text-slate-400 leading-relaxed">
+                          Send hundreds of emails instantly via Resend API. High speed automation for large lists.
+                      </p>
+                  </div>
+                  <Button disabled className="w-full h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 font-black italic uppercase tracking-widest rounded-2xl">
+                      Locked <Clock className="ml-2 h-4 w-4" />
+                  </Button>
+              </CardContent>
+          </Card>
+      </div>
+
+      {/* Recipients List Table */}
+      <div className="space-y-4 pt-4">
+          <div className="flex items-center justify-between px-2">
+              <h2 className="text-sm font-black italic uppercase tracking-widest text-slate-400">Recipients Preview</h2>
+              <Badge variant="outline" className="text-[8px] font-black">{campaign.total_count} CONTACTS</Badge>
           </div>
+          <Card className="border-none bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl overflow-hidden">
+              <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                      <thead>
+                          <tr className="border-b border-slate-100 dark:border-slate-800">
+                              <th className="p-4 text-[9px] font-black uppercase tracking-widest text-slate-400 w-12 text-center">#</th>
+                              <th className="p-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Recipient</th>
+                              <th className="p-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Company</th>
+                              <th className="p-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {/* We'll fetch the first few contacts for preview */}
+                          {campaign.contacts?.slice(0, 10).map((c: any, i: number) => (
+                              <tr key={c.id} className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-colors">
+                                  <td className="p-4 text-[10px] font-black text-slate-300 text-center">{i + 1}</td>
+                                  <td className="p-4">
+                                      <div className="flex flex-col">
+                                          <span className="text-xs font-black tracking-tight">{c.name || 'Unknown'}</span>
+                                          <span className="text-[9px] font-bold text-indigo-500">{c.email}</span>
+                                      </div>
+                                  </td>
+                                  <td className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{c.company || '-'}</td>
+                                  <td className="p-4">
+                                      <Badge className="bg-slate-100 text-slate-500 text-[8px] font-black border-none px-2 py-0">PENDING</Badge>
+                                  </td>
+                              </tr>
+                          ))}
+                          {campaign.total_count > 10 && (
+                            <tr>
+                                <td colSpan={4} className="p-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    And {campaign.total_count - 10} more contacts...
+                                </td>
+                            </tr>
+                          )}
+                      </tbody>
+                  </table>
+              </div>
+          </Card>
       </div>
     </div>
   );
