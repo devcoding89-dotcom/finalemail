@@ -58,6 +58,8 @@ export default function QuickSendPage() {
   const currentIndexRef = useRef(-1)
   const sentInBatchRef = useRef(0)
   const batchLimitRef = useRef(10)
+  const subjectRef = useRef(subject)
+  const bodyRef = useRef(body)
 
   // Keep refs in sync
   useEffect(() => {
@@ -65,7 +67,9 @@ export default function QuickSendPage() {
     currentIndexRef.current = currentIndex
     sentInBatchRef.current = sentInBatch
     batchLimitRef.current = parseInt(batchLimit) || 10
-  }, [emails, currentIndex, sentInBatch, batchLimit])
+    subjectRef.current = subject
+    bodyRef.current = body
+  }, [emails, currentIndex, sentInBatch, batchLimit, subject, body])
 
   // Smart Focus Trigger: When user returns to the tab, if we're waiting, trigger next.
   useEffect(() => {
@@ -131,8 +135,8 @@ export default function QuickSendPage() {
 
   // Generate mailto link
   const getMailto = (entry: EmailEntry) => {
-    const personalizedSubject = subject.replace(/\{name\}/gi, entry.name)
-    const personalizedBody = body.replace(/\{name\}/gi, entry.name).replace(/\{email\}/gi, entry.email)
+    const personalizedSubject = subjectRef.current.replace(/\{name\}/gi, entry.name)
+    const personalizedBody = bodyRef.current.replace(/\{name\}/gi, entry.name).replace(/\{email\}/gi, entry.email)
     return `mailto:${encodeURIComponent(entry.email)}?subject=${encodeURIComponent(personalizedSubject)}&body=${encodeURIComponent(personalizedBody)}`
   }
 
