@@ -138,10 +138,6 @@ export default function QuickSendPage() {
 
   // BATCH SEND LOGIC
   const startBatch = () => {
-    if (!subject.trim()) {
-      toast.error('Please enter a subject first')
-      return
-    }
     const pendingIndex = emails.findIndex(e => e.status === 'pending')
     if (pendingIndex === -1) {
       toast.info('No pending emails!')
@@ -396,7 +392,7 @@ export default function QuickSendPage() {
       <div className="pt-2 px-2">
          <Button
             onClick={startBatch}
-            disabled={pendingCount === 0 || !subject.trim() || activeBatch}
+            disabled={pendingCount === 0 || activeBatch}
             className="w-full h-20 text-2xl font-black rounded-3xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-2xl shadow-indigo-500/30 transition-all active:scale-95 flex flex-col items-center justify-center gap-1"
           >
             <div className="flex items-center gap-2">
