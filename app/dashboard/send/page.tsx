@@ -289,7 +289,7 @@ export default function QuickSendPage() {
 
           {emails.length > 0 && (
             <div className="flex flex-wrap gap-1.5 pt-2">
-              {emails.map((entry) => (
+              {emails.map((entry, i) => (
                 <Badge
                   key={entry.email}
                   variant="secondary"
@@ -300,10 +300,11 @@ export default function QuickSendPage() {
                       : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                   )}
                 >
+                  <span className="text-[8px] font-black opacity-50">#{i + 1}</span>
                   {entry.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
                   {entry.email}
                   {entry.status === 'pending' && (
-                    <button onClick={() => removeEmail(entry.email)} className="hover:text-red-500">
+                    <button onClick={() => removeEmail(entry.email)} className="hover:text-red-500 ml-1">
                       <X className="h-3 w-3" />
                     </button>
                   )}
