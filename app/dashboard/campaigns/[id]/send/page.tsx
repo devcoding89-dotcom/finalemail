@@ -334,7 +334,6 @@ export default function CampaignSendPage() {
                 </CardContent>
             </Card>
         </div>
-iv>
       </div>
     </div>
   );
