@@ -33,13 +33,14 @@ import {
 
 interface EmailEntry {
   email: string
+  name: string
   status: 'pending' | 'sending' | 'sent' | 'failed'
 }
 
 export default function QuickSendPage() {
   const [emailInput, setEmailInput] = useState('')
   const [emails, setEmails] = useState<EmailEntry[]>([])
-  const [subject, setSubject] = useState('')
+  const [subject, setSubject] = useState('Quick Question for {name}')
   const [body, setBody] = useState('')
   const [activeBatch, setActiveBatch] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(-1)
@@ -90,23 +91,38 @@ export default function QuickSendPage() {
 
   // Add emails from input
   const addEmails = () => {
-    const newEmails = emailInput
-      .split(/[\n,;]+/)
-      .map((e) => e.trim())
-      .filter((e) => e.includes('@') && e.includes('.'))
-      .filter((e) => !emails.some((ex) => ex.email === e))
+    const lines = emailInput.split(/[\n,;]+/).map(l => l.trim()).filter(l => l.length > 0);
+    const newEntries: EmailEntry[] = [];
 
-    if (newEmails.length === 0) {
-      toast.error('No valid emails found')
+    lines.forEach(line => {
+      let email = '';
+      let name = '';
+
+      // Match "Name <email@...>"
+      const match = line.match(/^([^<]+)<([^>]+)>$/);
+      if (match) {
+        name = match[1].trim();
+        email = match[2].trim();
+      } else {
+        email = line;
+        // Simple extraction: john.doe@... -> John Doe
+        const namePart = email.split('@')[0].split(/[._-]+/);
+        name = namePart.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+      }
+
+      if (email.includes('@') && !emails.some(ex => ex.email === email)) {
+        newEntries.push({ email, name, status: 'pending' });
+      }
+    });
+
+    if (newEntries.length === 0) {
+      toast.error('No new valid emails found');
       return
     }
 
-    setEmails((prev) => [
-      ...prev,
-      ...newEmails.map((email) => ({ email, status: 'pending' as const })),
-    ])
+    setEmails((prev) => [...prev, ...newEntries]);
     setEmailInput('')
-    toast.success(`Added ${newEmails.length} email(s)`)
+    toast.success(`Added ${newEntries.length} contact(s)`)
   }
 
   const removeEmail = (email: string) => {
@@ -114,9 +130,10 @@ export default function QuickSendPage() {
   }
 
   // Generate mailto link
-  const getMailto = (email: string) => {
-    const personalizedBody = body.replace(/\{email\}/gi, email)
-    return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(personalizedBody)}`
+  const getMailto = (entry: EmailEntry) => {
+    const personalizedSubject = subject.replace(/\{name\}/gi, entry.name)
+    const personalizedBody = body.replace(/\{name\}/gi, entry.name).replace(/\{email\}/gi, entry.email)
+    return `mailto:${encodeURIComponent(entry.email)}?subject=${encodeURIComponent(personalizedSubject)}&body=${encodeURIComponent(personalizedBody)}`
   }
 
   // BATCH SEND LOGIC
@@ -164,7 +181,7 @@ export default function QuickSendPage() {
 
     setCurrentIndex(index)
     
-    const mailtoUrl = getMailto(entry.email)
+    const mailtoUrl = getMailto(entry)
     window.location.href = mailtoUrl // Using location.href is more reliable on mobile for mailto
     
     // Mark as sent in state
@@ -302,7 +319,8 @@ export default function QuickSendPage() {
                 >
                   <span className="text-[8px] font-black opacity-50">#{i + 1}</span>
                   {entry.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
-                  {entry.email}
+                  <span className="font-black italic uppercase text-[9px]">{entry.name}</span>
+                  <span className="opacity-60">({entry.email})</span>
                   {entry.status === 'pending' && (
                     <button onClick={() => removeEmail(entry.email)} className="hover:text-red-500 ml-1">
                       <X className="h-3 w-3" />
