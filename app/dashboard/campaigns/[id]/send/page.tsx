@@ -158,9 +158,14 @@ export default function CampaignSendPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-xl font-black italic uppercase tracking-tighter">Campaign Send</h1>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            {progress?.current} / {progress?.total} • {progress?.remaining} left
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="outline" className="text-[8px] font-black border-slate-200 dark:border-slate-800 rounded-lg h-5 px-2">
+                CONTACT #{progress?.current}
+            </Badge>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+              OF {progress?.total} • {progress?.remaining} LEFT
+            </span>
+          </div>
         </div>
         <div className="bg-indigo-600 text-white px-4 py-1.5 rounded-xl font-black italic text-[10px] shadow-lg shadow-indigo-500/20">
           {progress?.sent} SENT
@@ -182,8 +187,11 @@ export default function CampaignSendPage() {
         <div className="lg:col-span-7 space-y-4">
             <Card className="bg-slate-50 dark:bg-slate-900 border-none shadow-sm rounded-2xl">
                 <CardContent className="p-4 flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg font-black italic shadow-lg shadow-indigo-500/20">
+                    <div className="h-12 w-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg font-black italic shadow-lg shadow-indigo-500/20 relative">
                         {data?.contact?.name?.charAt(0) || data?.contact?.email?.charAt(0) || '?'}
+                        <div className="absolute -top-2 -right-2 bg-black text-white text-[8px] px-1.5 py-0.5 rounded-full border border-white dark:border-slate-800 font-black">
+                            #{progress?.current}
+                        </div>
                     </div>
                     <div>
                         <p className="font-black text-base tracking-tight">{data?.contact?.name || 'Unknown'}</p>
