@@ -316,7 +316,23 @@ export default function QuickSendPage() {
                   <span className="text-[8px] font-black opacity-50">#{i + 1}</span>
                   {entry.status === 'sent' && <CheckCircle2 className="h-3 w-3" />}
                   <span className="font-black italic uppercase text-[9px]">{entry.name}</span>
-                  <span className="opacity-60">({entry.email})</span>
+                  <span 
+                    className="opacity-60 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 hover:opacity-100 hover:underline transition-colors"
+                    onClick={() => {
+                      window.location.href = getMailto(entry);
+                      setEmails((prev) =>
+                        prev.map((e, idx) => (idx === i ? { ...e, status: 'sent' } : e))
+                      );
+                      fetch('/api/logs/quick-send', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: entry.email }),
+                      }).catch(console.error);
+                    }}
+                    title="Click to send message"
+                  >
+                    ({entry.email})
+                  </span>
                   {entry.status === 'pending' && (
                     <button onClick={() => removeEmail(entry.email)} className="hover:text-red-500 ml-1">
                       <X className="h-3 w-3" />
