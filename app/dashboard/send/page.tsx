@@ -61,6 +61,7 @@ export default function QuickSendPage() {
   const [selectedListId, setSelectedListId] = useState<string>('')
   const [isFetchingLists, setIsFetchingLists] = useState(true)
   const [isFetchingContacts, setIsFetchingContacts] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
   
   // Refs for stable values across timeouts and event listeners
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -122,6 +123,35 @@ export default function QuickSendPage() {
     }
     fetchLists()
   }, [])
+
+  // Load state from local storage on mount
+  useEffect(() => {
+    try {
+      const savedEmails = localStorage.getItem('quickSend_emails')
+      const savedSubject = localStorage.getItem('quickSend_subject')
+      const savedBody = localStorage.getItem('quickSend_body')
+      const savedBatchLimit = localStorage.getItem('quickSend_batchLimit')
+
+      if (savedEmails) setEmails(JSON.parse(savedEmails))
+      if (savedSubject) setSubject(savedSubject)
+      if (savedBody) setBody(savedBody)
+      if (savedBatchLimit) setBatchLimit(savedBatchLimit)
+    } catch (e) {
+      console.error('Failed to load Quick Send state from local storage', e)
+    } finally {
+      setIsHydrated(true)
+    }
+  }, [])
+
+  // Save state to local storage whenever it changes
+  useEffect(() => {
+    if (isHydrated) {
+      localStorage.setItem('quickSend_emails', JSON.stringify(emails))
+      localStorage.setItem('quickSend_subject', subject)
+      localStorage.setItem('quickSend_body', body)
+      localStorage.setItem('quickSend_batchLimit', batchLimit)
+    }
+  }, [emails, subject, body, batchLimit, isHydrated])
 
   // Add emails from input
   const addEmails = () => {
