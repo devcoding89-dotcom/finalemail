@@ -140,6 +140,14 @@ export default function QuickSendPage() {
     return `mailto:${encodeURIComponent(entry.email)}?subject=${encodeURIComponent(personalizedSubject)}&body=${encodeURIComponent(personalizedBody)}`
   }
 
+  const getGmailComposeUrl = (entry: EmailEntry, autoSend: boolean = false) => {
+    const personalizedSubject = subjectRef.current.replace(/\{name\}/gi, entry.name)
+    const personalizedBody = bodyRef.current.replace(/\{name\}/gi, entry.name).replace(/\{email\}/gi, entry.email)
+    let url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(entry.email)}&su=${encodeURIComponent(personalizedSubject)}&body=${encodeURIComponent(personalizedBody)}`
+    if (autoSend) url += '&autosend=true'
+    return url
+  }
+
   // BATCH SEND LOGIC
   const startBatch = () => {
     const pendingIndex = emails.findIndex(e => e.status === 'pending')
@@ -181,8 +189,11 @@ export default function QuickSendPage() {
 
     setCurrentIndex(index)
     
-    const mailtoUrl = getMailto(entry)
-    window.location.href = mailtoUrl // Using location.href is more reliable on mobile for mailto
+    // Use the extension to open the Gmail tab securely to avoid popup blockers
+    window.postMessage({
+      type: 'START_QUICK_SEND',
+      composeUrl: getGmailComposeUrl(entry, true)
+    }, '*');
     
     // Mark as sent in state
     setEmails((prev) =>
