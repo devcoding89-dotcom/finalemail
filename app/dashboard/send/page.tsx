@@ -14,7 +14,14 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import type { EmailList, Contact } from '@/types'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Send,
   Zap,
@@ -49,6 +56,10 @@ export default function QuickSendPage() {
   const [isAutoSending, setIsAutoSending] = useState(false)
   const [sentInBatch, setSentInBatch] = useState(0)
   const [countdown, setCountdown] = useState(0)
+  const [lists, setLists] = useState<EmailList[]>([])
+  const [selectedListId, setSelectedListId] = useState<string>('')
+  const [isFetchingLists, setIsFetchingLists] = useState(true)
+  const [isFetchingContacts, setIsFetchingContacts] = useState(false)
   
   // Refs for stable values across timeouts and event listeners
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -93,6 +104,24 @@ export default function QuickSendPage() {
     }
   }, [])
 
+  // Fetch lists on mount
+  useEffect(() => {
+    const fetchLists = async () => {
+      try {
+        const res = await fetch('/api/lists')
+        const json = await res.json()
+        if (json.success && json.data) {
+          setLists(json.data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch lists', err)
+      } finally {
+        setIsFetchingLists(false)
+      }
+    }
+    fetchLists()
+  }, [])
+
   // Add emails from input
   const addEmails = () => {
     const lines = emailInput.split(/[\n,;]+/).map(l => l.trim()).filter(l => l.length > 0);
@@ -131,6 +160,40 @@ export default function QuickSendPage() {
 
   const removeEmail = (email: string) => {
     setEmails((prev) => prev.filter((e) => e.email !== email))
+  }
+
+  const importFromList = async () => {
+    if (!selectedListId) return
+    setIsFetchingContacts(true)
+    try {
+      const res = await fetch(`/api/contacts?listId=${selectedListId}`)
+      const json = await res.json()
+      if (json.success && json.data) {
+        const contacts: Contact[] = json.data
+        const newEntries: EmailEntry[] = contacts
+          .filter(c => c.email && !emailsRef.current.some(ex => ex.email === c.email))
+          .map(c => ({
+            email: c.email,
+            name: c.name || c.email.split('@')[0],
+            status: 'pending'
+          }))
+          
+        if (newEntries.length === 0) {
+          toast.info('No new contacts found in this list')
+        } else {
+          setEmails(prev => [...prev, ...newEntries])
+          toast.success(`Imported ${newEntries.length} contacts!`)
+          setSelectedListId('') // Reset selection
+        }
+      } else {
+        toast.error(json.error || 'Failed to import contacts')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('An error occurred during import')
+    } finally {
+      setIsFetchingContacts(false)
+    }
   }
 
   // Generate mailto link
@@ -289,11 +352,44 @@ export default function QuickSendPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
+          {/* List Import Section */}
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Import from Saved List</Label>
+            <div className="flex gap-2">
+              <Select value={selectedListId} onValueChange={setSelectedListId} disabled={isFetchingLists || lists.length === 0}>
+                <SelectTrigger className="w-full h-12 bg-white dark:bg-slate-950 rounded-xl border-slate-200 dark:border-slate-800 shadow-sm">
+                  <SelectValue placeholder={isFetchingLists ? "Loading lists..." : lists.length === 0 ? "No lists available" : "Select a list..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {lists.map(list => (
+                    <SelectItem key={list.id} value={list.id}>
+                      {list.name} ({list.total_contacts} contacts)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                onClick={importFromList} 
+                disabled={!selectedListId || isFetchingContacts}
+                className="h-12 px-5 rounded-xl bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-400 font-bold transition-all"
+              >
+                {isFetchingContacts ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Users className="h-4 w-4 mr-2" />}
+                Import
+              </Button>
+            </div>
+          </div>
+
+          <div className="relative flex items-center py-2">
+            <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+            <span className="flex-shrink-0 mx-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">OR PASTE EMAILS</span>
+            <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+          </div>
+
           <textarea
             value={emailInput}
             onChange={(e) => setEmailInput(e.target.value)}
             placeholder={"Paste emails here...\njohn@company.com\njane@agency.ng"}
-            className="w-full min-h-[120px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner"
+            className="w-full min-h-[100px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner"
           />
           <Button
             onClick={addEmails}
