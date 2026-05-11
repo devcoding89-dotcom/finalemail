@@ -401,7 +401,8 @@ export default function QuickSendPage() {
           </Button>
 
           {emails.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-2">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap gap-1.5 pt-2 max-h-[300px] overflow-y-auto pr-2 pb-2">
               {emails.map((entry, i) => (
                 <Badge
                   key={entry.email}
@@ -410,7 +411,7 @@ export default function QuickSendPage() {
                     "pl-2 pr-1 py-1 rounded-lg text-[11px] gap-1.5 border transition-colors",
                     entry.status === 'sent' 
                       ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
-                      : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                      : "bg-orange-500/10 text-orange-600 border-orange-500/30"
                   )}
                 >
                   <span className="text-[8px] font-black opacity-50">#{i + 1}</span>
@@ -440,13 +441,23 @@ export default function QuickSendPage() {
                   )}
                 </Badge>
               ))}
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  document.getElementById('step-2-config')?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className="w-full text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-900/50 dark:hover:bg-indigo-950 font-bold"
+              >
+                Continue to Settings <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
             </div>
           )}
         </CardContent>
       </Card>
 
       {/* Step 2: Configuration */}
-      <Card className="border-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-950/10 rounded-2xl">
+      <Card id="step-2-config" className="border-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-950/10 rounded-2xl scroll-mt-6">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold flex items-center gap-2 text-indigo-600">
             <Settings2 className="h-4 w-4" />
