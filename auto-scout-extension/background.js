@@ -22,22 +22,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.error("Failed to send email in Gmail tab");
       stopAndNotify();
     }
-  } else if (message.type === 'START_QUICK_SEND') {
-    chrome.storage.local.get(['quickSendTabId'], (result) => {
-      if (result.quickSendTabId) {
-        chrome.tabs.update(result.quickSendTabId, { url: message.composeUrl, active: true }, (tab) => {
-          if (chrome.runtime.lastError || !tab) {
-             chrome.tabs.create({ url: message.composeUrl, active: true }, (newTab) => {
-               chrome.storage.local.set({ quickSendTabId: newTab.id });
-             });
-          }
-        });
-      } else {
-        chrome.tabs.create({ url: message.composeUrl, active: true }, (tab) => {
-          chrome.storage.local.set({ quickSendTabId: tab.id });
-        });
-      }
-    });
   }
 });
 

@@ -4,18 +4,12 @@ window.addEventListener('load', () => {
   // Check if we have pending data to send in this tab
   chrome.storage.local.get(['pendingEmailData'], (result) => {
     const data = result.pendingEmailData;
-    if (data) {
-      // Clear it so if they refresh it doesn't run again
-      chrome.storage.local.remove(['pendingEmailData']);
-      automateGmailCompose(data);
-      return;
-    }
+    if (!data) return; // Not an Auto Scout tab
     
-    // Check if it's a Quick Send URL
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('autosend') === 'true') {
-      automateQuickSendClick();
-    }
+    // Clear it so if they refresh it doesn't run again
+    chrome.storage.local.remove(['pendingEmailData']);
+    
+    automateGmailCompose(data);
   });
 });
 
@@ -120,41 +114,6 @@ async function automateGmailCompose(data) {
       success: false,
       error: error.message
     });
-  }
-}
-
-async function automateQuickSendClick() {
-  try {
-    console.log("Auto Scout: Quick Send detected. Waiting for fields to populate from URL...");
-    
-    // Wait for the Send button to be ready
-    const sendBtn = await waitForElement('.dC > div, div[aria-label^="Send"]');
-    if (!sendBtn) throw new Error("Send button not found");
-    
-    // Give Gmail an extra 2 seconds to finish reading URL parameters and building recipient chips
-    await sleep(2000); 
-
-    console.log("Auto Scout: Clicking Send...");
-    sendBtn.click();
-
-    // Handle potential confirmation popups
-    await sleep(800);
-    const confirmationBtn = document.querySelector('button[name="ok"], button:contains("Send anyway"), button:contains("Continue"), div[role="button"]:contains("OK")');
-    if (confirmationBtn) {
-      console.log("Auto Scout: Clicking confirmation popup...");
-      confirmationBtn.click();
-    }
-    
-    console.log("Auto Scout: Waiting for confirmation...");
-    await waitForElement('span:contains("Message sent")', 15000).catch(() => {
-      console.log("Auto Scout: Could not detect toast, assuming sent after delay.");
-    });
-    
-    await sleep(1000);
-    console.log("Auto Scout: Quick Send finished.");
-
-  } catch (error) {
-    console.error("Auto Scout Error (Quick Send):", error);
   }
 }
 

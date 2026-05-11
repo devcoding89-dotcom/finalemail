@@ -26,11 +26,6 @@
       "matches": ["https://mail.google.com/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
-    },
-    {
-      "matches": ["http://localhost:3000/*", "https://*.vercel.app/*"],
-      "js": ["dashboard-bridge.js"],
-      "run_at": "document_start"
     }
   ]
 }
